@@ -136,7 +136,7 @@ evoked_dict = {'Reward_maze': evoked1, 'No_reward_maze': evoked2,
                'Difference_Wave': difference_wave}
 linestyles = dict(Reward_maze = '-', No_reward_maze = '--', 
                   Difference_Wave = '-')
-ch_name='E170'
+ch_name=''
 picks=evoked1.ch_names.index(ch_name)
 
 fig=mne.viz.plot_compare_evokeds(evoked_dict, picks=picks, 
