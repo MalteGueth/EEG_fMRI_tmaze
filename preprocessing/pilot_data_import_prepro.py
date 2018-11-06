@@ -86,7 +86,7 @@ ica.apply(raw, exclude=[])
 tmin, tmax = -0.2, 0.8
 epochs = mne.Epochs(raw, events=events, event_id=event_id, 
                     picks=picks, tmin=tmin, tmax=tmax,
-                    preload=True, baseline=(-0.2, 0))
+                    preload=True, baseline=None)
                     
 reward = epochs['reward'].average()
 no_reward = epochs['no_reward'].average()
@@ -95,9 +95,59 @@ no_reward = epochs['no_reward'].average()
 reward.plot_joint()
 reward.plot_joint()
 
+# An alterntive approach for epoching would be to import the event file from
+# the fMRI analysis and re-arrange it to the event file format, so
+# that you end up with a set of trials for each feedback, direction, and
+# context combination.
+# 
+
+# Create virtual channel for EGI
+reward = epochs[reward_left_maze+reward_right_maze].average()
+reward.apply_baseline(baseline=(-0.2,0))
+data = reward.data
+
+FCz= np.array([data[22], data[14], data[5],
+               data[6], data[7], data[8], data[14]]).mean(axis=0)
+P8= np.array([data[170], data[177], data[178], 
+              data[169], data[168], data[160], data[159]]).mean(axis=0)
+data[14] = FCz
+data[169] = P8
+reward.data = data
+
+no_reward = epochs[no_reward_left_maze+no_reward_right_maze].average()
+no_reward.apply_baseline(baseline=(-0.2,0))
+data_norew = no_reward.data
+
+FCz= np.array([data_norew[22], data_norew[14], data_norew[5],
+               data_norew[6], data_norew[7], data_norew[8], data_norew[14]]).mean(axis=0)
+P8= np.array([data_norew[170], data_norew[177], data_norew[178], 
+              data_norew[169], data_norew[168], data_norew[160], data_norew[159]]).mean(axis=0)
+data_norew[14] = FCz
+data_norew[169] = P8
+no_reward.data = data_norew
+
+# Compute difference wave
+difference_wave = mne.combine_evoked((reward,no_reward),[-1,1])
+
+# Plot new channels and difference wave
+colors = dict(Reward_maze = "darkblue", No_reward_maze = "darkred", 
+              Difference_Wave = 'black')
+evoked_dict = {'Reward_maze': evoked1, 'No_reward_maze': evoked2, 
+               'Difference_Wave': difference_wave}
+linestyles = dict(Reward_maze = '-', No_reward_maze = '--', 
+                  Difference_Wave = '-')
+ch_name='E170'
+picks=evoked1.ch_names.index(ch_name)
+
+fig=mne.viz.plot_compare_evokeds(evoked_dict, picks=picks, 
+                                  truncate_yaxis=False, truncate_xaxis=False,
+                                  colors=colors, linestyles=linestyles,
+                                  invert_y=True, ylim = dict(eeg=[-8,8]),
+                                  title='Feedback related responses during maze trials',
+                                  show_sensors=True)
+
 # Export
 index, scaling_time = ['epoch', 'time'], 1e3
 epochs = '/sub1_preprocessed_epochs.fif'
 df = epochs.to_data_frame(picks=None, scalings=None, scaling_time=scaling_time, index=index)  
 df_all.to_csv('/path/sub1_epochs.csv')
-
