@@ -86,7 +86,14 @@ manual_TR_detection.m - Identifies all artifact intervals over the EEG
                         concurrent recording.
 %}
 
-function [weighting_matrix,realignment_motion,ecg_volumes] = adaptive_weighting_matrix(scans,n_template,rp_file,threshold,ecg_channel)
+function [weighting_matrix,realignment_motion,ecg_volumes] = adaptive_weighting_matrix(scans,n_template,varargin)
+rp_file,threshold,ecg_channel
+
+p=inputParser;
+p.addParameter('rp_file', char.empty(0,0), @ischar);
+p.addParameter('threshold', [], @isnumeric && @isscalar);
+p.addParameter('ecg_channel', [], @isnumeric && @isscalar)
+p.parse(varargin{:});
 
 % If too few input arguments are provided, give the following error
 % message...
@@ -123,7 +130,7 @@ elseif nargin == 2
 % If enough arguments for a realignment parameter-informed average artifact 
 % subtraction are passed, switch from a linear weighting matrix to a
 % motion parameter-informed one.
-elseif nargin == 4
+elseif ~isempty(p.Results.rp_file)
     
     % Check if the provided realignment parameter file (rp file) exists
     if ~exist(rp_file, 'file')
@@ -207,14 +214,15 @@ elseif nargin == 4
     else
         % Show a warning if no value exceeded threshold and explain the
         % consequences
-        warning('None of the provided realignment parameters exceed the given threshold. This will result in a linear sliding artifact window. If this is not wanted, consider setting a lower threshold.')
+        warning('None of the provided realignment parameters exceed the given threshold. This will result in a linear sliding artifact window.' '/n' 'If this is not wanted, consider setting a lower movement threshold and re-run this function.')
     end
     % If enough arguments for an ECG-informed average artifact 
     % subtraction are passed, add another modification of the weighting
     % matrix
-elseif nargin == 5
+elseif ~isempty(p.Results.ecg_channel)
     rPeaks = qrs_detect(ecg_channel);
     
 
 end
 end
+
