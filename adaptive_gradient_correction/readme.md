@@ -12,7 +12,7 @@ this github [repository][bergen_toolbox]._
 
 This project is pursued as an assignment for the graduate course 'Scientific Programming in Matlab' (Behavioral
 and Neural Sciences Program, Rutgers University Newark). _Example data has been collected in the [Baker Laboratory
-for Cognitive Neuroimaging and Stimulation][lab_page]._
+for Cognitive Neuroimaging and Stimulation][lap_page]._
 
 ![](logo.png)
 
@@ -50,5 +50,5 @@ under construction
 5. Create a new Pull Request
 
 <!-- Markdown link & img dfn's -->
-[lap_page]: http://neurostimlab.com
 [bergen_toolbox]: https://github.com/jnvandermeer/BergenToolboxModified
+[lap_page]: http://neurostimlab.com
