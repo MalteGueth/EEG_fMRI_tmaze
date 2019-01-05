@@ -6,12 +6,12 @@ for removing gradient artifacts from EEG signals recorded in the MRI environment
 for head movements as well as distortions of the average artifact through ballistocardiac artifacts. All of the
 analyses are written for Matlab R1018b and can be performed without eeglab (see Usage example). 
 
-_The outlined analyses are adapted from the approaches presented in Allen, Josephs, & Turner (2000) as well as 
+The outlined analyses are adapted from the approaches presented in Allen, Josephs, & Turner (2000) as well as 
 Moosmann, Schoenfelder, Specht Scheeringa, Nordby, & Hudgahl (2009). Their original functions can be found in
-this github [repository][bergen_toolbox]._
+this _[repository][bergen_toolbox]._
 
 This project is pursued as an assignment for the graduate course 'Scientific Programming in Matlab' (Behavioral
-and Neural Sciences Program, Rutgers University Newark). _Example data has been collected in the [Baker Laboratory
+and Neural Sciences Program, Rutgers University Newark). Example data has been collected in the _[Baker Laboratory
 for Cognitive Neuroimaging and Stimulation][lap_page]._
 
 ![](logo.png)
