@@ -1,17 +1,14 @@
 %{
 function adaptive_weighting_matrix
-
 This function and listed helper functions are all adapted from the analyses
 presented in Allen, Josephs, & Turner (2000) as well as Moosmann,
 Schoenfelder, Specht Scheeringa, Nordby, & Hudgahl (2009). All original
 functions are copyrighted by the Bergen fMRI group and can be found on
 their github repository:
 https://github.com/jnvandermeer/BergenToolboxModified.
-
 All function related to the presented adaptive correction approach can be
 found in the following github repository: 
 https://github.com/MalteGueth/EEG_fMRI_tmaze/tree/master/adaptive_gradient_correction
-
 This function creates the weighting matrix for an adaptive ECG- and 
 realignment-informed average artifact subtraction appraoch to correct
 gradient artifacts from electrophysiological data which was recorded
@@ -22,7 +19,6 @@ window that can be applied to continuous EEG and ECG data.
 REQUIRED INPUTS
 scans - A single integer representing total number of TR/acquired 
         functional images.
-
 n_template - The number of artifacts that make up the window length.
 
 OPTIONAL INPUTS
@@ -34,65 +30,58 @@ rp_file - If a realignment parameter-informed average artifact subtraction
           obtained during the realignment of the simultaneously recorded 
           functional images. The rows of the file should be the number of 
           total scans.
-
 threshold - If an rp_file was passed, this argument sets the threshold for
             significant movements. The threshold should a single integer 
             indicating the minimum movement accelaration 
             (see realign_euclid.m) for biasing the weighting matrix. This 
             is recommended to avoid slow, probably none harmful head 
             movements from influencing the correction.
-
-ecg_channel - If on top of the realignment parameter-informed average 
-              artifact subtraction, an ECG-based correction is desired, an 
-              ECG channel can be specified. Both a row index of an ECG 
-              channel wihtin a matrix of voltages for different channels 
-              over time or a vector of a single ECG channel (also voltage 
-              over time) can be passed to the function.
-              This new approach is designed to take distortions of the 
-              gradient artifact by ballistocardiac artifacts into account. 
-              When an increased variance within the heart beat cycles of a 
-              single artifact is detected, the weighting matrix returned 
-              by this function is adapted. Modifications of the weighting 
-              matrix are performed analogous to the adaptation to motion 
-              artifacts. 
-              The threshold for a given artifact's ECG variance is 
-              calculated by the subject's mean variance over a all ECG
-              epochs.
-
+ECG - If on top of the realignment parameter-informed average 
+      artifact subtraction, an ECG-based correction is desired, an 
+      ECG channel can be specified. Both a row index of an ECG 
+      channel wihtin a matrix of voltages for different channels 
+      over time or a vector of a single ECG channel (also voltage 
+      over time) can be passed to the function.
+      This new approach is designed to take distortions of the 
+      gradient artifact by ballistocardiac artifacts into account. 
+      When an increased variance within the heart beat cycles of a 
+      single artifact is detected, the weighting matrix returned 
+      by this function is adapted. Modifications of the weighting 
+      matrix are performed analogous to the adaptation to motion 
+      artifacts. 
+      The threshold for a given artifact's ECG variance is 
+      calculated by the subject's mean variance over a all ECG
+      epochs.
+      
 OUTPUT
 weighting_matrix - An N-by-N matrix containing the weights for building a
                    correction template to be applied to the continuous EEG 
                    and ECG signal.
-
 realignment_motion - A row vector of movement accelartion values (euclidian
                      vector magnitude) with the same length as the number 
                      of artifacts indicating. Non-zero values indicate 
                      which artifacts were identified as above-threshold for 
                      the correction.
-
 ecg_volumes - A row vector in the same format as the 'realignment_motion'
               output. Here, cell values correspond to above-threshold
               variance of the ECG channel for a given artifact.
-
+              
 Helper and related functions:
 realign_euclid.m - Uses euclidian norm to convert motion vectors into 
                    euclidian distance (or vector magnitude).
-qrs_detect.m - Identifies components of heart beat events and returns 
-               latencies (in points) of the peaks of the qrs complex.
 correction_matrix.m - Applies the weighting matrix to a sliding window on 
                       the continuous EEG and ECG data.
-manual_TR_detection.m - Identifies all artifact intervals over the EEG 
+TR_detection.m - Identifies all artifact intervals over the EEG 
                         signal based on TR markers set during the 
                         concurrent recording.
 %}
 
 function [weighting_matrix,realignment_motion,ecg_volumes] = adaptive_weighting_matrix(scans,n_template,varargin)
-rp_file,threshold,ecg_channel
 
 p=inputParser;
 p.addParameter('rp_file', char.empty(0,0), @ischar);
 p.addParameter('threshold', [], @isnumeric && @isscalar);
-p.addParameter('ecg_channel', [], @isnumeric && @isscalar)
+p.addParameter('ECG', [], @isnumeric && @isscalar)
 p.parse(varargin{:});
 
 % If too few input arguments are provided, give the following error
@@ -219,10 +208,64 @@ elseif ~isempty(p.Results.rp_file)
     % If enough arguments for an ECG-informed average artifact 
     % subtraction are passed, add another modification of the weighting
     % matrix
-elseif ~isempty(p.Results.ecg_channel)
-    rPeaks = qrs_detect(ecg_channel);
-    
+elseif ~isempty(p.Results.ECG)
 
-end
-end
+    % Search for the R peaks in the ECG signal
+    rPeaks = [];
+    samples = length(ECG)
 
+    % First, preprocess the ECG data
+    % Low Pass Filter
+    num=1/32*[1 0 0 0 0 0 -2 0 0 0 0 0 1];
+    denom=[1 -2 1];
+    ECGfilt=filter(num,denom,double(ECG));
+
+    % High Pass Filter
+    num=[-1/32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1/32];
+    denom=[1 -1];
+    ECGfilt=filter(num,denom,ECG_filt);
+
+    % Derivative Base Filter
+    num=[1/4 1/8 0 -1/8 -1/4];
+    denom=[1];
+    ECGfilt=filter(num,denom,ECGfilt);
+
+    % Normalize the data
+    ECGnorm=ECGfilt.^2/max(abs(ECGfilt.^2));
+
+    h=ones(1,31)/31;
+    ECG_AV=conv(ECGnorm,h);
+    ECG_AV=ECG_AV(15+[1:samples]);
+    ECG_AV=ECG_AV/max(abs(ECG_AV));
+
+    treshold=mean(ECG_AV);
+    P_G= (ECG_AV>0.01);
+
+    ECGdiff=diff(P_G);
+    left=find(ECGdiff==1);
+    right=find(ECGdiff==-1);
+
+    % Account for filtering delay
+    left=left-(6+16);
+    right=right-(6+16);
+
+    % Segment PQRST wave components
+    for i=1:length(left);
+       
+        [R_A(i) R_t(i)]=max(ECGfilt(left(i):right(i)));
+        R_t(i)=R_t(i)-1+left(i) %add offset
+       
+        [Q_A(i) Q_t(i)]=min(ECGfilt(left(i):R_t(i)));
+        Q_t(i)=Q_t(i)-1+left(i)
+      
+        [S_A(i) S_t(i)]=min(ECGfilt(left(i):right(i)));
+        S_t(i)=S_t(i)-1+left(i)
+        
+        [P_A(i) P_t(i)]=max(ECGfilt(left(i):Q_t(i)));
+        P_t(i)=P_t(i)-1+left(i)
+        
+        [T_A(i) T_t(i)]=max(ECGfilt(S_t(i):right(i)));
+        T_t(i)=T_t(i)-1+left(i)+47
+       
+    end
+end
