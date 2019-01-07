@@ -1,5 +1,6 @@
 %{
 function adaptive_weighting_matrix
+
 This function and listed helper functions are all adapted from the analyses
 presented in Allen, Josephs, & Turner (2000) as well as Moosmann,
 Schoenfelder, Specht Scheeringa, Nordby, & Hudgahl (2009). All original
@@ -71,9 +72,9 @@ realign_euclid.m - Uses euclidian norm to convert motion vectors into
                    euclidian distance (or vector magnitude).
 correction_matrix.m - Applies the weighting matrix to a sliding window on 
                       the continuous EEG and ECG data.
-TR_detection.m - Identifies all artifact intervals over the EEG 
-                        signal based on TR markers set during the 
-                        concurrent recording.
+marker_detection.m - Identifies all artifact intervals over the EEG 
+                     signal based on TR markers set during the 
+                     concurrent recording.
 %}
 
 function [weighting_matrix,realignment_motion,ecg_volumes] = adaptive_weighting_matrix(scans,n_template,varargin)
@@ -209,63 +210,35 @@ elseif ~isempty(p.Results.rp_file)
     % subtraction are passed, add another modification of the weighting
     % matrix
 elseif ~isempty(p.Results.ECG)
+    
+    % In order to perform a valid, rough segmentation, clean the ECG data
+    % with a linear sliding correction window
+    
+    window=zeros(scans,n_template);
+    lin_distance=zeros(1,scans);
 
-    % Search for the R peaks in the ECG signal
-    rPeaks = [];
-    samples = length(ECG)
-
-    % First, preprocess the ECG data
-    % Low Pass Filter
-    num=1/32*[1 0 0 0 0 0 -2 0 0 0 0 0 1];
-    denom=[1 -2 1];
-    ECGfilt=filter(num,denom,double(ECG));
-
-    % High Pass Filter
-    num=[-1/32 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1/32];
-    denom=[1 -1];
-    ECGfilt=filter(num,denom,ECG_filt);
-
-    % Derivative Base Filter
-    num=[1/4 1/8 0 -1/8 -1/4];
-    denom=[1];
-    ECGfilt=filter(num,denom,ECGfilt);
-
-    % Normalize the data
-    ECGnorm=ECGfilt.^2/max(abs(ECGfilt.^2));
-
-    h=ones(1,31)/31;
-    ECG_AV=conv(ECGnorm,h);
-    ECG_AV=ECG_AV(15+[1:samples]);
-    ECG_AV=ECG_AV/max(abs(ECG_AV));
-
-    treshold=mean(ECG_AV);
-    P_G= (ECG_AV>0.01);
-
-    ECGdiff=diff(P_G);
-    left=find(ECGdiff==1);
-    right=find(ECGdiff==-1);
-
-    % Account for filtering delay
-    left=left-(6+16);
-    right=right-(6+16);
-
-    % Segment PQRST wave components
-    for i=1:length(left);
-       
-        [R_A(i) R_t(i)]=max(ECGfilt(left(i):right(i)));
-        R_t(i)=R_t(i)-1+left(i) %add offset
-       
-        [Q_A(i) Q_t(i)]=min(ECGfilt(left(i):R_t(i)));
-        Q_t(i)=Q_t(i)-1+left(i)
-      
-        [S_A(i) S_t(i)]=min(ECGfilt(left(i):right(i)));
-        S_t(i)=S_t(i)-1+left(i)
-        
-        [P_A(i) P_t(i)]=max(ECGfilt(left(i):Q_t(i)));
-        P_t(i)=P_t(i)-1+left(i)
-        
-        [T_A(i) T_t(i)]=max(ECGfilt(S_t(i):right(i)));
-        T_t(i)=T_t(i)-1+left(i)+47
-       
+    % Inititate sliding correction window around a central artifact point
+    for half_window=1:scans
+        % In order to get all artifact samples, create the linear distance 
+        %between the first and central data point ...
+        lin_distance(1:half_window)=half_window:-1:1;
+        % ... and now into the other direction between the halfed window size 
+        % and the end of the sliding window
+        lin_distance(half_window+1:end)=2:+1:scans-half_window+1;
+        % Sort weights and samples by distance value ...
+        [~,order]=sort(lin_distance);
+        % ... and start with the smalest distance value
+        window(half_window,:)=order(1:n_template);
     end
+
+    % Create a modifiable weighting matrix for the total number of scans
+    % with ones for each scan as default
+    weighting_matrix=zeros(scans);
+    for artifact=1:scans
+        weighting_matrix(artifact,window(artifact,:))=1;
+    end
+    
+    ECGdata = baseline(ECG, 1, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
+    ECGdata = correction_matrix(ECG,1,weighting_matrix,artifactOnsets,0,TR);
+    
 end
