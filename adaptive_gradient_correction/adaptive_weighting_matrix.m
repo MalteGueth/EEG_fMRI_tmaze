@@ -213,7 +213,6 @@ elseif ~isempty(p.Results.ECG)
     
     % In order to perform a valid, rough segmentation, clean the ECG data
     % with a linear sliding correction window
-    
     window=zeros(scans,n_template);
     lin_distance=zeros(1,scans);
 
@@ -238,26 +237,42 @@ elseif ~isempty(p.Results.ECG)
         weighting_matrix(artifact,window(artifact,:))=1;
     end
     
-    ECGdata = BaselineCorrect(ECG, 1, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
-    ECGcorrected = correction_matrix(ECGdata,1,weighting_matrix,artifactOnsets,0,TR);
+    % Cut all values for the time before and after the fMRI acquisition
+    % events
     
-    [~,R_peaks] = findpeaks(ECGcorrected,'MinPeakHeight',0.5,'MinPeakDistance',200);
+    % Apply a sliding correction window built from the weighting matrix to
+    % the ECG data
+    ECGcorrected = correction_matrix(ECG,1,weighting_matrix,artifactOnsets,0,TR);
+    % On top of that, put a bandpass filter on the data
+    ECGcorrected = bandpass(ECGcorrected,[2,20],1000);
     
-    pnts_back = 250;
-    pnts_fwrd = 250;
+    % Use peak detection to identify R peaks in the ECG and retrieve
+    % indices representing samples at which a peak was reached (with
+    % sufficient distance to the last peak)
+    [~,R_peaks] = findpeaks(ECGcorrected,'MinPeakHeight',500,'MinPeakDistance',500);
+    
+    % Epoch the data around the R peak
+    pnts_back = 200;
+    pnts_fwrd = 200;
     segments = zeros(length(R_peaks)-1,pnts_back+pnts_fwrd+1);
-    
-    for i=1:length(R_peaks)-1
-        segments(i,:)=ECGcorrected(R_peaks(i)-pnts_back:R_peaks(i)+pnts_fwrd);
-        %segments(i,pnts_back:end)=segments(i,pnts_back:end)-mean(segments(i,1:pnts_back));
+    for i=2:length(R_peaks)-1
+        segments(i-1,:) = ECGcorrected(R_peaks(i)-pnts_back:R_peaks(i)+pnts_fwrd);
     end
-    average_heartBeat=mean(segments,1)/1000;
+    
+    % Calculate the average waveform and plot it
+    mean_heartBeat=mean(segments,1)/1000;
     
     figure(2)
-    plot(average_heartBeat)
-    axis([0 (pnts_back+pnts_fwrd) min(average_heartBeat)-0.1 max(average_heartBeat)+0.1])
+    plot(mean_heartBeat)
+    axis([0 (pnts_back+pnts_fwrd) min(mean_heartBeat)-0.1 max(mean_heartBeat)+0.1])
     title('Averge heart beat epoch')
     xlabel('Sample points')
     ylabel('Voltage (mV)')
+    
+    % To derive a measure indicating conspicuous ECG segments, calculate
+    % the variance for each segment as well as the average variance
+    % centered around the qrs complex
+    ecg_variance = var(segments(start_segments:end,100:300),0,2);
+    ecg_outliers = isoutlier(ecg_variance,'mean');
     
 end
