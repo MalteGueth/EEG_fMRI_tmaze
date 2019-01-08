@@ -193,7 +193,7 @@ elseif ~isempty(p.Results.rp_file)
         % and mind the mid diagonal in relation to accelaration values 
         % exceeding threshold in the above matrix plotting the motion
         % vector
-        figure;
+        figure(1);
         subplot(3,1,1);
         plot(realignment_motion,'k')
         xlim([0 scans])
@@ -238,7 +238,26 @@ elseif ~isempty(p.Results.ECG)
         weighting_matrix(artifact,window(artifact,:))=1;
     end
     
-    ECGdata = baseline(ECG, 1, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
-    ECGdata = correction_matrix(ECG,1,weighting_matrix,artifactOnsets,0,TR);
+    ECGdata = BaselineCorrect(ECG, 1, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
+    ECGcorrected = correction_matrix(ECGdata,1,weighting_matrix,artifactOnsets,0,TR);
+    
+    [~,R_peaks] = findpeaks(ECGcorrected,'MinPeakHeight',0.5,'MinPeakDistance',200);
+    
+    pnts_back = 250;
+    pnts_fwrd = 250;
+    segments = zeros(length(R_peaks)-1,pnts_back+pnts_fwrd+1);
+    
+    for i=1:length(R_peaks)-1
+        segments(i,:)=ECGcorrected(R_peaks(i)-pnts_back:R_peaks(i)+pnts_fwrd);
+        %segments(i,pnts_back:end)=segments(i,pnts_back:end)-mean(segments(i,1:pnts_back));
+    end
+    average_heartBeat=mean(segments,1)/1000;
+    
+    figure(2)
+    plot(average_heartBeat)
+    axis([0 (pnts_back+pnts_fwrd) min(average_heartBeat)-0.1 max(average_heartBeat)+0.1])
+    title('Averge heart beat epoch')
+    xlabel('Sample points')
+    ylabel('Voltage (mV)')
     
 end
