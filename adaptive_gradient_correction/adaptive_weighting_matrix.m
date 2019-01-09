@@ -53,6 +53,9 @@ ECG - If on top of the realignment parameter-informed average
       The threshold for a given artifact's ECG variance is 
       calculated by the subject's mean variance over a all ECG
       epochs.
+start_segments - The number of ECG segments recorded before the onset
+                 of fMRI acquisition.
+sfreq - The sampling rate.
       
 OUTPUT
 weighting_matrix - An N-by-N matrix containing the weights for building a
@@ -75,6 +78,8 @@ correction_matrix.m - Applies the weighting matrix to a sliding window on
 marker_detection.m - Identifies all artifact intervals over the EEG 
                      signal based on TR markers set during the 
                      concurrent recording.
+qrs_detect.m - Identifies components of heart beat events and returns 
+               latencies (in points) of the peaks of the qrs wave.
 %}
 
 function [weighting_matrix,realignment_motion,ecg_volumes] = adaptive_weighting_matrix(scans,n_template,varargin)
@@ -83,6 +88,8 @@ p=inputParser;
 p.addParameter('rp_file', char.empty(0,0), @ischar);
 p.addParameter('threshold', [], @isnumeric && @isscalar);
 p.addParameter('ECG', [], @isnumeric && @isscalar)
+p.addParameter('start_segments', [], @isnumeric && @isscalar)
+p.addParameter('sfreq', [], @isnumeric && @isscalar)
 p.parse(varargin{:});
 
 % If too few input arguments are provided, give the following error
@@ -193,7 +200,7 @@ elseif ~isempty(p.Results.rp_file)
         % and mind the mid diagonal in relation to accelaration values 
         % exceeding threshold in the above matrix plotting the motion
         % vector
-        figure(1);
+        figure(1)
         subplot(3,1,1);
         plot(realignment_motion,'k')
         xlim([0 scans])
@@ -238,25 +245,24 @@ elseif ~isempty(p.Results.ECG)
     end
     
     % Cut all values for the time before and after the fMRI acquisition
-    % events
+    artifactOnsets = marker_detection(events,TR_marker);
     
     % Apply a sliding correction window built from the weighting matrix to
     % the ECG data
     ECGcorrected = correction_matrix(ECG,1,weighting_matrix,artifactOnsets,0,TR);
-    % On top of that, put a bandpass filter on the data
-    ECGcorrected = bandpass(ECGcorrected,[2,20],1000);
     
     % Use peak detection to identify R peaks in the ECG and retrieve
-    % indices representing samples at which a peak was reached (with
-    % sufficient distance to the last peak)
-    [~,R_peaks] = findpeaks(ECGcorrected,'MinPeakHeight',500,'MinPeakDistance',500);
+    % indices representing samples at which a peak was reached (see
+    % qrs_detect)
+    [R_peaks,~] = qrs_detect(ECGcorrected,sfreq,0.6,1.5,5,35);
     
     % Epoch the data around the R peak
     pnts_back = 200;
     pnts_fwrd = 200;
     segments = zeros(length(R_peaks)-1,pnts_back+pnts_fwrd+1);
-    for i=2:length(R_peaks)-1
-        segments(i-1,:) = ECGcorrected(R_peaks(i)-pnts_back:R_peaks(i)+pnts_fwrd);
+    
+    for peak=2:length(R_peaks)-1
+        segments(peak-1,:) = ECGcorrected(R_peaks(peak)-pnts_back:R_peaks(peak)+pnts_fwrd);
     end
     
     % Calculate the average waveform and plot it
@@ -274,5 +280,5 @@ elseif ~isempty(p.Results.ECG)
     % centered around the qrs complex
     ecg_variance = var(segments(start_segments:end,100:300),0,2);
     ecg_outliers = isoutlier(ecg_variance,'mean');
-    
+
 end
