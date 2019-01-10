@@ -1,6 +1,5 @@
 %{
 function adaptive_weighting_matrix
-
 This function and listed helper functions are all adapted from the analyses
 presented in Allen, Josephs, & Turner (2000) as well as Moosmann,
 Schoenfelder, Specht Scheeringa, Nordby, & Hudgahl (2009). All original
@@ -53,9 +52,11 @@ ECG - If on top of the realignment parameter-informed average
       The threshold for a given artifact's ECG variance is 
       calculated by the subject's mean variance over a all ECG
       epochs.
-start_segments - The number of ECG segments recorded before the onset
-                 of fMRI acquisition.
-sfreq - The sampling rate.
+start - The number of sample points recorded before the onset of the fMRI
+        recording.
+sfreq - The sampling rate in Hz.
+ecg_feature - If an rp_file was passed, this argument sets the threshold for
+              significant movements. The threshold should a 
       
 OUTPUT
 weighting_matrix - An N-by-N matrix containing the weights for building a
@@ -71,25 +72,30 @@ ecg_volumes - A row vector in the same format as the 'realignment_motion'
               variance of the ECG channel for a given artifact.
               
 Helper and related functions:
+marker_detection.m - Identifies all artifact intervals over the EEG 
+                     signal based on TR markers set during the 
+                     concurrent recording.
 realign_euclid.m - Uses euclidian norm to convert motion vectors into 
                    euclidian distance (or vector magnitude).
 correction_matrix.m - Applies the weighting matrix to a sliding window on 
                       the continuous EEG and ECG data.
-marker_detection.m - Identifies all artifact intervals over the EEG 
-                     signal based on TR markers set during the 
-                     concurrent recording.
 qrs_detect.m - Identifies components of heart beat events and returns 
                latencies (in points) of the peaks of the qrs wave.
 %}
 
 function [weighting_matrix,realignment_motion,ecg_volumes] = adaptive_weighting_matrix(scans,n_template,varargin)
 
+validString = {'r_peak', 'qrs', 'pq_time', 'qt_interval', 'elevated_st'};
+checkString = @(x) any(validatestring(x,validString));
+checkNum = @(x) isnumeric(x) && isscalar(x);
+
 p=inputParser;
 p.addParameter('rp_file', char.empty(0,0), @ischar);
-p.addParameter('threshold', [], @isnumeric && @isscalar);
-p.addParameter('ECG', [], @isnumeric && @isscalar)
-p.addParameter('start_segments', [], @isnumeric && @isscalar)
-p.addParameter('sfreq', [], @isnumeric && @isscalar)
+p.addParameter('threshold', [], checkNum);
+p.addParameter('ECG', [], checkNum)
+p.addParameter('start_segments', [], checkNum)
+p.addParameter('sfreq', [], checkNum)
+p.addParameter('ecg_feature', [], checkString)
 p.parse(varargin{:});
 
 % If too few input arguments are provided, give the following error
@@ -98,31 +104,9 @@ if nargin < 2
     error('Please provide at least the total number of scans as well as the number of artifacts constituting the correction template for a linear correction window.')
 elseif nargin == 2
     
-    % Set up some pre-computational variables for the window size and a
-    % a linear distance vector
-    window=zeros(scans,n_template);
-    lin_distance=zeros(1,scans);
-
-    % Inititate sliding correction window around a central artifact point
-    for half_window=1:scans
-        % In order to get all artifact samples, create the linear distance 
-        %between the first and central data point ...
-        lin_distance(1:half_window)=half_window:-1:1;
-        % ... and now into the other direction between the halfed window size 
-        % and the end of the sliding window
-        lin_distance(half_window+1:end)=2:+1:scans-half_window+1;
-        % Sort weights and samples by distance value ...
-        [~,order]=sort(lin_distance);
-        % ... and start with the smalest distance value
-        window(half_window,:)=order(1:n_template);
-    end
-
     % Create a modifiable weighting matrix for the total number of scans
     % with ones for each scan as default
-    weighting_matrix=zeros(scans);
-    for artifact=1:scans
-        weighting_matrix(artifact,window(artifact,:))=1;
-    end
+    weighting_matrix = linear_weighting(scans,n_template);
     
 % If enough arguments for a realignment parameter-informed average artifact 
 % subtraction are passed, switch from a linear weighting matrix to a
@@ -211,74 +195,49 @@ elseif ~isempty(p.Results.rp_file)
     else
         % Show a warning if no value exceeded threshold and explain the
         % consequences
-        warning('None of the provided realignment parameters exceed the given threshold. This will result in a linear sliding artifact window.' '/n' 'If this is not wanted, consider setting a lower movement threshold and re-run this function.')
+        warning('None of the provided realignment parameters exceed the given threshold. This will result in an unmodified correction window. If this is not wanted, consider setting a lower movement threshold and re-run this function.')
     end
-    % If enough arguments for an ECG-informed average artifact 
-    % subtraction are passed, add another modification of the weighting
-    % matrix
+    
+% If enough arguments for an ECG-informed average artifact 
+% subtraction are passed, add another modification of the weighting
+% matrix
 elseif ~isempty(p.Results.ECG)
     
-    % In order to perform a valid, rough segmentation, clean the ECG data
-    % with a linear sliding correction window
-    window=zeros(scans,n_template);
-    lin_distance=zeros(1,scans);
-
-    % Inititate sliding correction window around a central artifact point
-    for half_window=1:scans
-        % In order to get all artifact samples, create the linear distance 
-        %between the first and central data point ...
-        lin_distance(1:half_window)=half_window:-1:1;
-        % ... and now into the other direction between the halfed window size 
-        % and the end of the sliding window
-        lin_distance(half_window+1:end)=2:+1:scans-half_window+1;
-        % Sort weights and samples by distance value ...
-        [~,order]=sort(lin_distance);
-        % ... and start with the smalest distance value
-        window(half_window,:)=order(1:n_template);
-    end
-
     % Create a modifiable weighting matrix for the total number of scans
     % with ones for each scan as default
-    weighting_matrix=zeros(scans);
-    for artifact=1:scans
-        weighting_matrix(artifact,window(artifact,:))=1;
-    end
+    weighting_matrix = linear_weighting(scans,n_template);
     
-    % Cut all values for the time before and after the fMRI acquisition
-    artifactOnsets = marker_detection(events,TR_marker);
-    
+    % Baseline correct the ECG data, before subtracting the average
+    % artifact
+    ECGbase = BaselineCorrect(ECG, 1, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
+
     % Apply a sliding correction window built from the weighting matrix to
     % the ECG data
-    ECGcorrected = correction_matrix(ECG,1,weighting_matrix,artifactOnsets,0,TR);
+    ECGcorrected = correction_matrix(ECGbase,1,weighting_matrix,artifactOnsets,0,TR);
     
-    % Use peak detection to identify R peaks in the ECG and retrieve
-    % indices representing samples at which a peak was reached (see
-    % qrs_detect)
-    [R_peaks,~] = qrs_detect(ECGcorrected,sfreq,0.6,1.5,5,35);
-    
-    % Epoch the data around the R peak
-    pnts_back = 200;
-    pnts_fwrd = 200;
-    segments = zeros(length(R_peaks)-1,pnts_back+pnts_fwrd+1);
-    
-    for peak=2:length(R_peaks)-1
-        segments(peak-1,:) = ECGcorrected(R_peaks(peak)-pnts_back:R_peaks(peak)+pnts_fwrd);
+    % Use the information about R peaks to identify the Q and S samples and
+    % to epoch the data around the R peak
+    switch (p.Results.ecg_feature)
+        case 'r_peak'
+            % Use peak detection to identify R peaks in the ECG and get
+            % indices representing samples at which a peak was reached (see
+            % qrs_detect)
+            [R_peaks,~,~,~,~,~] = qrs_detect(ECGcorrected,sfreq,artifactOnsets(1));
+            
+        case 'qrs'
+            % ... in addition to 'r_peak' get the Q and S timings
+            [R_peaks,R_segments,~,q,s,~] = qrs_detect(ECGcorrected,sfreq);
+            
+            % To derive a measure indicating conspicuous ECG segments, calculate
+            % the variance for each segment as well as the average variance
+            % centered around the qrs complex
+            smaller_segments = R_segments(:,100:300);
+            ecg_variance = var(smaller_segments,0,2);
+            ecg_outliers = isoutlier(ecg_variance,'mean');
+            
+        case 'pq_time'
+        case 'qt_interval'
+        case 'elevated_st'
     end
-    
-    % Calculate the average waveform and plot it
-    mean_heartBeat=mean(segments,1)/1000;
-    
-    figure(2)
-    plot(mean_heartBeat)
-    axis([0 (pnts_back+pnts_fwrd) min(mean_heartBeat)-0.1 max(mean_heartBeat)+0.1])
-    title('Averge heart beat epoch')
-    xlabel('Sample points')
-    ylabel('Voltage (mV)')
-    
-    % To derive a measure indicating conspicuous ECG segments, calculate
-    % the variance for each segment as well as the average variance
-    % centered around the qrs complex
-    ecg_variance = var(segments(start_segments:end,100:300),0,2);
-    ecg_outliers = isoutlier(ecg_variance,'mean');
 
 end
