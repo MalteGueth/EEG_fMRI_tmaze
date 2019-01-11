@@ -1,4 +1,4 @@
-function [ EEG ] = BaselineCorrect(EEG, n_channels, TR, Peak_references, weighting_matrix, baseline_method, onset_value, offset_value, ref_start, ref_end, extra_data)
+function [ EEG ] = baseline_correct(EEG, n_channels, TR, Peak_references, weighting_matrix, baseline_method, onset_value, offset_value, ref_start, ref_end, extra_data)
 
 try
    lim1 = length(Peak_references);
