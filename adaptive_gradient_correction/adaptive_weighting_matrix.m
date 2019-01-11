@@ -101,6 +101,9 @@ find_ecg_outliers - Based on a vector of logicals indicating above
 
 function [weighting_matrix,realignment_motion,ecg_outliers] = adaptive_weighting_matrix(scans,n_template,varargin)
 
+realignment_motion = [];
+ecg_outliers = [];
+
 validString = {'r_peak', 'qrs', 'pq_time', 'qt_time', 'st_amp'};
 checkString = @(x) any(validatestring(x,validString));
 checkNum = @(x) isnumeric(x);
@@ -237,7 +240,7 @@ elseif ~isempty(p.Results.ECG)
         case 'st_amp'
 
              % ... get the S and T timings
-            [~,~,~,~,s,t,ECGfilt] = qrs_detect(EEG_GA_corrected,sfreq,start);
+            [~,~,~,~,s,t,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
             % Get the ST amplitude
             % The ST duration lasts approx. from the end of S to the
@@ -262,51 +265,52 @@ elseif ~isempty(p.Results.ECG)
         window=zeros(scans,n_template);
         lin_distance=zeros(1,scans);
 
-        if ~isempty(realignment_motion)
+        switch (p.Results.heart_and_motion)
+            case true
             
-            for half_window=1:scans
+                for half_window=1:scans
 
-                lin_distance(1:half_window)=half_window:-1:1;
-                lin_distance(half_window+1:end)=2:1:scans-half_window+1;
-                
-                motion_scaling = n_template/min(realignment_motion(realignment_motion>0));
-                lin_distance = lin_distance + motion_scaling * cumsum([-realignment_motion(1:half_window) +realignment_motion(half_window+1:end)]);
-                lin_distance(realignment_motion>0)= NaN;
-                
-                % Insert the ECG-informed outliers
-                heart_scaling = n_template/min(ecg_outliers(ecg_outliers>0));
-                lin_distance = lin_distance + heart_scaling * cumsum([-ecg_outliers(1:half_window) +ecg_outliers(half_window+1:end)]);
-                lin_distance(ecg_outliers>0)=NaN;
+                    lin_distance(1:half_window)=half_window:-1:1;
+                    lin_distance(half_window+1:end)=2:1:scans-half_window+1;
 
-                [~,order]=sort(lin_distance);
-                window(half_window,:)=order(1:n_template);
-            end
+                    motion_scaling = n_template/min(realignment_motion(realignment_motion>0));
+                    lin_distance = lin_distance + motion_scaling * cumsum([-realignment_motion(1:half_window) +realignment_motion(half_window+1:end)]);
+                    lin_distance(realignment_motion>0)= NaN;
 
-            weighting_matrix=zeros(scans);
-            for artifact=1:scans
-                weighting_matrix(artifact,window(artifact,:))=1;
-            end
+                    % Insert the ECG-informed outliers
+                    heart_scaling = n_template/min(ecg_outliers(ecg_outliers>0));
+                    lin_distance = lin_distance + heart_scaling * cumsum([-ecg_outliers(1:half_window) +ecg_outliers(half_window+1:end)]);
+                    lin_distance(ecg_outliers>0)=NaN;
+
+                    [~,order]=sort(lin_distance);
+                    window(half_window,:)=order(1:n_template);
+                end
+
+                weighting_matrix=zeros(scans);
+                for artifact=1:scans
+                    weighting_matrix(artifact,window(artifact,:))=1;
+                end
             
-        else
-            
-            for half_window=1:scans
-                
-                lin_distance(1:half_window)=half_window:-1:1;
-                lin_distance(half_window+1:end)=2:1:scans-half_window+1;
-                
-                heart_scaling = n_template/min(ecg_outliers(ecg_outliers>0));
-                lin_distance = lin_distance + heart_scaling * cumsum([-ecg_outliers(1:half_window) +ecg_outliers(half_window+1:end)]);
-                lin_distance(ecg_outliers>0)=NaN;
-                
-                [~,order]=sort(lin_distance);
-                window(half_window,:)=order(1:n_template);
-            end
+            case true
 
-            weighting_matrix=zeros(scans);
-            for artifact=1:scans
-                weighting_matrix(artifact,window(artifact,:))=1;
-            end
-        end
+                for half_window=1:scans
+
+                    lin_distance(1:half_window)=half_window:-1:1;
+                    lin_distance(half_window+1:end)=2:1:scans-half_window+1;
+
+                    heart_scaling = n_template/min(ecg_outliers(ecg_outliers>0));
+                    lin_distance = lin_distance + heart_scaling * cumsum([-ecg_outliers(1:half_window) +ecg_outliers(half_window+1:end)]);
+                    lin_distance(ecg_outliers>0)=NaN;
+
+                    [~,order]=sort(lin_distance);
+                    window(half_window,:)=order(1:n_template);
+                end
+
+                weighting_matrix=zeros(scans);
+                for artifact=1:scans
+                    weighting_matrix(artifact,window(artifact,:))=1;
+                end
+         end
     end
     
     if ~isempty(ecg_outliers) && ~isempty(realignment_motion)
@@ -322,7 +326,9 @@ elseif ~isempty(p.Results.ECG)
         xlim([0 scans])
         subplot(3,1,[2,3]);
         imagesc(weighting_matrix)
-
+        set(findall(gcf,'-property','FontSize'),'FontSize',10)
+        set(findall(gcf,'-property','FontName'),'FontName','Arial')
+        
     elseif ~isempty(ecg_outliers) && isempty(realignment_motion)
 
         % Plot the ECG-informed weighting matrix
@@ -334,5 +340,7 @@ elseif ~isempty(p.Results.ECG)
         xlim([0 scans])
         subplot(3,1,[2,3]);
         imagesc(weighting_matrix)
+        set(findall(gcf,'-property','FontSize'),'FontSize',10)
+        set(findall(gcf,'-property','FontName'),'FontName','Arial')
     end
 end
