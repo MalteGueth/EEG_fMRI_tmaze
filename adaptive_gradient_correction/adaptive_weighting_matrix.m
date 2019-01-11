@@ -6,9 +6,6 @@ Schoenfelder, Specht Scheeringa, Nordby, & Hudgahl (2009). All original
 functions are copyrighted by the Bergen fMRI group and can be found on
 their github repository:
 https://github.com/jnvandermeer/BergenToolboxModified.
-All function related to the presented adaptive correction approach can be
-found in the following github repository: 
-https://github.com/MalteGueth/EEG_fMRI_tmaze/tree/master/adaptive_gradient_correction
 This function creates the weighting matrix for an adaptive ECG- and 
 realignment-informed average artifact subtraction appraoch to correct
 gradient artifacts from electrophysiological data which was recorded
@@ -37,26 +34,34 @@ threshold - If an rp_file was passed, this argument sets the threshold for
             is recommended to avoid slow, probably none harmful head 
             movements from influencing the correction.
 ECG - If on top of the realignment parameter-informed average 
-      artifact subtraction, an ECG-based correction is desired, an 
-      ECG channel can be specified. Both a row index of an ECG 
+      artifact subtraction, an ECG-based correction is requested, 
+      an ECG channel can be specified. Both a row index of an ECG 
       channel wihtin a matrix of voltages for different channels 
       over time or a vector of a single ECG channel (also voltage 
       over time) can be passed to the function.
       This new approach is designed to take distortions of the 
       gradient artifact by ballistocardiac artifacts into account. 
-      When an increased variance within the heart beat cycles of a 
-      single artifact is detected, the weighting matrix returned 
+      When an above threshold value for features of the heart beat cycle 
+      for a single artifact is detected, the weighting matrix returned 
       by this function is adapted. Modifications of the weighting 
       matrix are performed analogous to the adaptation to motion 
       artifacts. 
-      The threshold for a given artifact's ECG variance is 
-      calculated by the subject's mean variance over a all ECG
-      epochs.
+      The parameter indicating outlier heart beats can be chosen by
+      the ecg_feature argument. The default is set to 'qrs'.
 start - The number of sample points recorded before the onset of the fMRI
         recording.
 sfreq - The sampling rate in Hz.
-ecg_feature - If an rp_file was passed, this argument sets the threshold for
-              significant movements. The threshold should a 
+heart_and_motion - A logical indicating whether a combination of
+                   realignment- and ECG-informed artifact correction shall
+                   be performed. Default is set to true. If set to false,
+                   only heart beat events will be used to modify the
+                   weighting matrix. If both is requested, note that the
+                   necessary arguments for a realignment-informed correction
+                   have to be passed as well.
+ecg_feature - String values correspond to the ECG feature used to identify
+              outlier artifact intervals. Valid inputs are 'r_peak', 'qrs', 
+              'pq_time', 'qt_interval' and 'elevated_st'. Default is set to
+              'qrs'.
       
 OUTPUT
 weighting_matrix - An N-by-N matrix containing the weights for building a
@@ -64,12 +69,11 @@ weighting_matrix - An N-by-N matrix containing the weights for building a
                    and ECG signal.
 realignment_motion - A row vector of movement accelartion values (euclidian
                      vector magnitude) with the same length as the number 
-                     of artifacts indicating. Non-zero values indicate 
-                     which artifacts were identified as above-threshold for 
-                     the correction.
-ecg_volumes - A row vector in the same format as the 'realignment_motion'
-              output. Here, cell values correspond to above-threshold
-              variance of the ECG channel for a given artifact.
+                     of artifacts. Non-zero values indicate which artifacts
+                     were identified as above-threshold for the correction.
+ecg_outliers - A row vector of R peaks with a value for each heart beat. 
+               Here, non-zero cell values correspond to above-threshold
+               ECG feature values.
               
 Helper and related functions:
 marker_detection.m - Identifies all artifact intervals over the EEG 
@@ -93,9 +97,10 @@ p=inputParser;
 p.addParameter('rp_file', char.empty(0,0), @ischar);
 p.addParameter('threshold', [], checkNum);
 p.addParameter('ECG', [], checkNum)
-p.addParameter('start_segments', [], checkNum)
+p.addParameter('start', [], checkNum)
 p.addParameter('sfreq', [], checkNum)
-p.addParameter('ecg_feature', [], checkString)
+p.addParameter('heart_and_motion', true, @islogical)
+p.addParameter('ecg_feature', 'qrs', checkString)
 p.parse(varargin{:});
 
 % If too few input arguments are provided, give the following error
@@ -205,7 +210,79 @@ elseif ~isempty(p.Results.ECG)
     
     % Create a modifiable weighting matrix for the total number of scans
     % with ones for each scan as default
-    weighting_matrix = linear_weighting(scans,n_template);
+    switch (p.Results.heart_and_motion)
+        case false
+                weighting_matrix = linear_weighting(scans,n_template);
+        case true
+            % Check if the provided realignment parameter file (rp file) exists
+            if ~exist(rp_file, 'file')
+                error('The given realignment parameter file does not exist. Please provide a correct file name.');
+            end
+
+            % Load the rp file
+            motion_file = load(rp_file);
+
+            % Calculate the movement magnitude or accelaration for translational
+            % and rotational movements
+            translational = realign_euclid(diff(motion_file(:,1:3)));
+            rotational = realign_euclid(diff(motion_file(:,4:6)))*180/pi;
+
+            % Threshold the results of the previous step to the requested value and
+            % combine both movement values
+            thresholded_trans = translational.*(translational>threshold);
+            thresholded_rot = rotational.*(rotational>threshold);
+            realignment_motion = thresholded_trans + thresholded_rot;
+
+            % To prevent possible errors, adjust the length of the motion vector if
+            % there is a discrapency between the length of the original file and
+            % the vector
+            realignment_motion = [zeros(1,length(motion_file)-length(realignment_motion)) realignment_motion];
+
+            % Get the total number of scans listed in the realignment_motion vector
+            n_data=length(realignment_motion);
+
+            % Compare that length to the amount of scans passed to the function to
+            % account for dummy scans
+            diff_n=scans-n_data;
+            % Adjust the length of the movement matrix in accordance to the
+            % difference
+            realignment_motion =[zeros(1,diff_n),realignment_motion];
+
+            % Perform the following loop only if there is a rp larger than 0 (above
+            % threshold)
+            if max(realignment_motion) > 0
+
+                % Set up variables and the moving window as shown above for the
+                % linear weighting
+                window=zeros(scans,n_template);
+                lin_distance=zeros(1,scans);
+                for half_window=1:scans
+
+                    lin_distance(1:half_window)=half_window:-1:1;
+                    lin_distance(half_window+1:end)=2:1:scans-half_window+1;
+
+                    % Create a scale for motion artifacts detected through the
+                    % ratio of artifact templates and the minimum movement artifact
+                    % (effect of the smallest movement over the number of artifacts
+                    % / over time)
+                    motion_scaling = n_template/min(realignment_motion(realignment_motion>0));
+                    % Add the (linear) distance to the cumulative sum of motion
+                    % artifacts
+                    lin_distance = lin_distance + motion_scaling * cumsum([-realignment_motion(1:half_window) +realignment_motion(half_window+1:end)]);
+                    lin_distance(realignment_motion>0)= NaN;
+
+                    % Again, as above for the linear weights...
+                    [~,order]=sort(lin_distance);
+                    window(half_window,:)=order(1:n_template);
+                end
+
+                weighting_matrix=zeros(scans);
+                for artifact=1:scans
+                    weighting_matrix(artifact,window(artifact,:))=1;
+                end
+             end
+    end
+        
     
     % Baseline correct the ECG data, before subtracting the average
     % artifact
@@ -224,6 +301,23 @@ elseif ~isempty(p.Results.ECG)
             % qrs_detect)
             [R_peaks,~,~,~,~,~] = qrs_detect(ECGcorrected,sfreq,artifactOnsets(1));
             
+            % Get the amplitude values and search for outlier R peaks
+            Ramp = ECGcorrected(R_peaks);
+            ecg_outliers = isoutlier(Ramp,'mean');
+            
+            % Check if there are any outliers at all
+            if isempty(ecg_outliers)
+                warning('None of the R peaks exceed the outlier threshold. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
+            % Otherwise, look for the TR intervals affected by the outliers
+            else
+                % Find outlier indices
+                TR_outliers = ecg_outliers==1;
+                % Pick the TR interval the outlier occured in by first 
+                % aligning TR and sample points (TR = (samples/sfreq)/TR)
+                TR_outliers = ceil((TR_outliers/sfreq)/TR);
+                % Modify the weighting matrix previously used on the ECG
+                weighting_matrix(TR_outliers) = NaN;
+            end
         case 'qrs'
             % ... in addition to 'r_peak' get the Q and S timings
             [R_peaks,R_segments,~,q,s,~] = qrs_detect(ECGcorrected,sfreq);
