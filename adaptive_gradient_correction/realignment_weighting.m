@@ -1,18 +1,21 @@
-function [weighting_matrix, realginment_motion] = realignment_weighting(scans,n_template,rp_file,varargin)
+function [weighting_matrix, realignment_motion] = realignment_weighting(scans,n_template,rp_file,varargin)
 
-checkNum = @(x) isnumeric(x) && isscalar(x);
+checkNum = @(x) isnumeric(x);
 
 p=inputParser;
 p.addParameter('threshold', 0.5, checkNum);
 p.parse(varargin{:});
 
 % Check if the provided realignment parameter file (rp file) exists
-if ~exist(rp_file, 'file')
+if ~exist(rp_file,'file')==2
     error('The given realignment parameter file does not exist. Please provide a correct file name.');
 end
 
 % Load the rp file
 motion_file = load(rp_file);
+
+% Set the threshold
+threshold = p.Results.threshold;
 
 % Calculate the movement magnitude or accelaration for translational
 % and rotational movements
@@ -44,8 +47,7 @@ realignment_motion =[zeros(1,diff_n),realignment_motion];
 % threshold)
 if max(realignment_motion) > 0
     
-    % Set up variables and the moving window as shown above for the
-    % linear weighting
+    % Set up variables and the moving window as for the linear weighting
     window=zeros(scans,n_template);
     lin_distance=zeros(1,scans);
     for half_window=1:scans
@@ -80,6 +82,7 @@ if max(realignment_motion) > 0
     figure(1)
     subplot(3,1,1);
     plot(realignment_motion,'k')
+    title('Realignment-informed weighting matrix')
     xlim([0 scans])
     subplot(3,1,[2,3]);
     imagesc(weighting_matrix)
