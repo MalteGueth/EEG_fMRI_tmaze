@@ -33,7 +33,7 @@ threshold - If an rp_file was passed, this argument sets the threshold for
             (see realign_euclid.m) for biasing the weighting matrix. This 
             is recommended to avoid slow, probably none harmful head 
             movements from influencing the correction. The default value
-            is set to 0.5.
+            is set to 0.3 mm.
 ECG - If on top of the realignment parameter-informed average 
       artifact subtraction, an ECG-based correction is requested, 
       an ECG channel can be specified. Both a row index of an ECG 
@@ -75,9 +75,8 @@ realignment_motion - A row vector of movement accelartion values (euclidian
                      vector magnitude) with the same length as the number 
                      of artifacts. Non-zero values indicate which artifacts
                      were identified as above-threshold for the correction.
-ecg_outliers - A row vector of R peaks with a value for each heart beat. 
-               Here, non-zero cell values correspond to above-threshold
-               ECG feature values.
+ecg_outliers - A row vector constructed analogously to 'realignment_motion'
+               only for above threshold ECG events.
               
 Helper and related functions:
 linear_weighting.m - Creates a square weighting matrix (scans-by-scans)
@@ -95,20 +94,23 @@ correction_matrix.m - Applies the weighting matrix to a sliding window on
                       the continuous EEG and ECG data.
 qrs_detect.m - Identifies components of heart beat events and returns 
                latencies (in points) of the peaks of the qrs wave.
+find_ecg_outliers - Based on a vector of logicals indicating above
+                    threshold ECG parameter values across the continuous
+                    signal, identify the affected TR intervals/scans.
 %}
 
-function [weighting_matrix,realignment_motion,ecg_volumes] = adaptive_weighting_matrix(scans,n_template,varargin)
+function [weighting_matrix,realignment_motion,ecg_outliers] = adaptive_weighting_matrix(scans,n_template,varargin)
 
-validString = {'r_peak', 'qrs', 'pq_time', 'qt_interval', 'elevated_st'};
+validString = {'r_peak', 'qrs', 'pq_time', 'qt_time', 'st_amp'};
 checkString = @(x) any(validatestring(x,validString));
-checkNum = @(x) isnumeric(x) && isscalar(x);
+checkNum = @(x) isnumeric(x);
 
 p=inputParser;
 p.addParameter('rp_file', char.empty(0,0), @ischar);
-p.addParameter('threshold', 0.5, checkNum);
+p.addParameter('threshold', 0.3, checkNum);
 p.addParameter('ECG', [], checkNum)
 p.addParameter('TR', [], checkNum)
-p.addParameter('events', [])
+p.addParameter('events', [], checkNum)
 p.addParameter('sfreq', [], checkNum)
 p.addParameter('heart_and_motion', true, @islogical)
 p.addParameter('ecg_feature', 'qrs', checkString)
@@ -127,12 +129,13 @@ elseif nargin == 2
 % If enough arguments for a realignment parameter-informed average artifact 
 % subtraction are passed, switch from a linear weighting matrix to a
 % motion parameter-informed one.
-elseif ~isempty(p.Results.rp_file)
+elseif ~isempty(p.Results.rp_file) && isempty(p.Results.ECG)
     
     % Create a weighting matrix and modify it in accordance
     % to provided motion data
     threshold = p.Results.threshold;
-    [weighting_matrix, realginment_motion] = realignment_weighting(scans,n_template,rp_file,threshold);
+    rp_file = p.Results.rp_file;
+    [weighting_matrix, realignment_motion] = realignment_weighting(scans,n_template,rp_file,'threshold',threshold);
     
 % If input arguments for an ECG-informed average artifact 
 % subtraction are passed, add another modification of the weighting
@@ -141,12 +144,13 @@ elseif ~isempty(p.Results.ECG)
     
     % Create a modifiable weighting matrix for the total number of scans
     % with a realignment-informed correction as default
+    rp_file = p.Results.rp_file;
     threshold = p.Results.threshold;
     switch (p.Results.heart_and_motion)
         case false
                 weighting_matrix = linear_weighting(scans,n_template);
         case true
-                [weighting_matrix, realginment_motion] = realignment_weighting(scans,n_template,rp_file,threshold);
+                [weighting_matrix, realignment_motion] = realignment_weighting(scans,n_template,rp_file,'threshold',threshold);
     end
         
     % Baseline correct the ECG data, before subtracting the average
@@ -172,137 +176,161 @@ elseif ~isempty(p.Results.ECG)
             % qrs_detect)
             [R_peaks,~,~,~,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
-            % Get the amplitude values and search for outlier R peaks
-            Ramp = ECGfilt(R_peaks);
-            ecg_outliers = isoutlier(Ramp,'mean');
+            % Get the amplitude values and 
+            Ramp = zeros(1,length(ECGfilt));
+            Ramp(R_peaks(:)) = ECGfilt(R_peaks(:));
             
-            % Check if there are any outliers at all
-            if isempty(ecg_outliers)
-                warning('None of the R peaks exceed the outlier threshold. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
-            % Otherwise, look for the TR intervals affected by the outliers
-            else
-                % Find outlier indices
-                TR_outliers = ecg_outliers==1;
-                % Pick the TR interval the outlier occured in by first 
-                % aligning TR and sample points (TR = (samples/sfreq)/TR)
-                TR_outliers = ceil((TR_outliers/sfreq)/TR);
-                % In case there are outliers beyond the total number of
-                % scans, delete them
-                TR_outliers(TR_outliers>scans) = [];
-                % Modify the weighting matrix previously used on the ECG
-                weighting_matrix(TR_outliers) = NaN;
-            end
+            % Search for outlier peaks (3 standard deviations above the mean)
+            Ramp_ind = Ramp>(3*std(Ramp(R_peaks(:)))+mean(Ramp(R_peaks(:))));
+            % Get the outlier R peaks and their respective scan's indices            
+            ecg_outliers = find_ecg_outliers(Ramp_ind,scans,sfreq,TR);
+   
         case 'qrs'
 
             % ... in addition to the R peaks, get the Q and S timings
             [~,~,~,q,s,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
             % Get the qrs variance
-            qrs = zeros(1,length(q));
-            for beat = length(q)
-                qrs(beat) = ECGfilt(q(beat):s(beat));
+            qrs_variance = zeros(1,length(ECGfilt));
+            for beat = 1:length(q)
+                qrs_variance(q(beat)) = var(ECGfilt(q(beat):s(beat)),1);
             end
-            qrs_variance = var(qrs,0,2);
-            ecg_outliers = isoutlier(qrs_variance,'mean');
-
-            if isempty(ecg_outliers)
-                warning('None of the QRS variances exceed the outlier threshold. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
-            else
-                TR_outliers = ecg_outliers==1;
-                TR_outliers = ceil((TR_outliers/sfreq)/TR);
-                TR_outliers(TR_outliers>scans) = [];
-                weighting_matrix(TR_outliers) = NaN;
-            end
+            
+            % Get the outlier qrs complexes and their respective scan's
+            % indices
+            qrs_ind = qrs_variance>(3*std(qrs_variance(q(:)))+mean(qrs_variance(q(:))));
+            ecg_outliers = find_ecg_outliers(qrs_ind,scans,sfreq,TR);
             
         case 'pq_time'
 
-             % ... get the P and Q timings
+            % ... get the P and Q timings
             [~,~,p,q,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
-            % Get the PQ interval
-            pq_time = zeros(1,length(p));
-            for beat = length(p)
-                pq_time(beat) = length(ECGfilt(p(beat):q(beat)));
+            % Get the PQ interval (approx. end of P to beginning of Q)
+            pq_time = zeros(1,length(ECGfilt));
+            for beat = 1:length(p)
+                % Take about 100ms after P's peak and before Q's peak
+                pq_time(p(beat)) = length(ECGfilt((p(beat)+(sfreq/10)):(q(beat)-(sfreq/10))));
             end
-            % Find the PQ components over 200ms        
-            ecg_outliers = pq_time(pq_time>=(sfreq/5));
+            
+            % Find PQ durations over 200ms (normal PQ is about 120 ms)      
+            pq_ind = pq_time>=(sfreq/5);
+            ecg_outliers = find_ecg_outliers(pq_ind,scans,sfreq,TR);
+            
+        case 'qt_time'
 
-            if isempty(ecg_outliers)
-                warning('None of the PQ intervals exceed 200ms. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
-            else
-                TR_outliers = ecg_outliers==1;
-                TR_outliers = ceil((TR_outliers/sfreq)/TR);
-                TR_outliers(TR_outliers>scans) = [];
-                weighting_matrix(TR_outliers) = NaN;
-            end
-        case 'qt_interval'
-
-             % ... get the Q and T timings
+            % ... get the Q and T timings
             [~,~,~,q,~,t,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
-            % Get the QT interval
-            qt_interval = zeros(1,length(q));
-            for beat = length(p)
-                qt_interval(beat) = length(ECGfilt(q(beat):t(beat)));
+            % Get the QT interval (approx. from the beginning of Q to the
+            % end of T)
+            qt_interval = zeros(1,length(ECGfilt));
+            for beat = 1:length(q)
+                % Take about 100ms after T's peak and before Q's peak
+                qt_interval(q(beat)) = length(ECGfilt(q(beat)-(sfreq/10)):t(beat)+(sfreq/10));
             end
+            
             % Find outlier QT intervals       
-            ecg_outliers = isoutlier(qt_interval,'mean');
+            qt_ind = qt_interval>(3*std(qt_interval(q(:)))+mean(qt_interval(q(:))));
+            ecg_outliers = find_ecg_outliers(qt_ind,scans,sfreq,TR);
 
-            if isempty(ecg_outliers)
-                warning('None of the QT intervals exceed the outlier threshold. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
-            else
-                TR_outliers = ecg_outliers==1;
-                TR_outliers = ceil((TR_outliers/sfreq)/TR);
-                TR_outliers(TR_outliers>scans) = [];
-                weighting_matrix(TR_outliers) = NaN;
-            end
-        case 'elevated_st'
+        case 'st_amp'
 
              % ... get the S and T timings
-            [~,~,~,~,s,t,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
+            [~,~,~,~,s,t,ECGfilt] = qrs_detect(EEG_GA_corrected,sfreq,start);
             
             % Get the ST amplitude
-            st_amp = zeros(1,length(q));
-            for beat = length(s)
-                st_amp(beat) = abs(ECGfilt(s(beat):t(beat)));
+            % The ST duration lasts approx. from the end of S to the
+            % beginning of T
+            st_amp = zeros(1,length(ECGfilt));
+            for beat = 1:length(s)
+                % Take about 100ms after S's peak and before T's peak
+                st_amp(s(beat)) = mean(abs(ECGfilt(s(beat)+(sfreq/10)):t(beat)-(sfreq/10)));
             end
-            % Find outlier QT intervals       
-            ecg_outliers = isoutlier(st_amp,'mean');
-
-            if isempty(ecg_outliers)
-                warning('None of the ST amplitudes exceed the outlier threshold. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
-            else
-                TR_outliers = ecg_outliers==1;
-                TR_outliers = ceil((TR_outliers/sfreq)/TR);
-                TR_outliers(TR_outliers>scans) = [];
-                weighting_matrix(TR_outliers) = NaN;
-            end
+            
+            % Find outlier ST amplitudes       
+            st_ind = st_amp>(3*std(st_amp(s(:)))+mean(st_amp(s(:))));
+            ecg_outliers = find_ecg_outliers(st_ind,scans,sfreq,TR);
     end
+    
+    feature = p.Results.ecg_feature;
+    if isempty(ecg_outliers)
+        warning(['None of heart beat events show an above threshold value for the chosen measure (' feature '). This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG parameter.'])
+    % Redo the weighting matrix with the newly found ecg outliers (see
+    % linear_weighting.m and realignment_weighting.m)
+    else
+        window=zeros(scans,n_template);
+        lin_distance=zeros(1,scans);
 
-    if ~isempty(TR_outliers) && p.Results.heart_and_motion==true
+        if ~isempty(realignment_motion)
+            
+            for half_window=1:scans
 
-        TRheart = zeros(1,scans);
-        TRheart(TR_outliers) = 1;
+                lin_distance(1:half_window)=half_window:-1:1;
+                lin_distance(half_window+1:end)=2:1:scans-half_window+1;
+                
+                motion_scaling = n_template/min(realignment_motion(realignment_motion>0));
+                lin_distance = lin_distance + motion_scaling * cumsum([-realignment_motion(1:half_window) +realignment_motion(half_window+1:end)]);
+                lin_distance(realignment_motion>0)= NaN;
+                
+                % Insert the ECG-informed outliers
+                heart_scaling = n_template/min(ecg_outliers(ecg_outliers>0));
+                lin_distance = lin_distance + heart_scaling * cumsum([-ecg_outliers(1:half_window) +ecg_outliers(half_window+1:end)]);
+                lin_distance(ecg_outliers>0)=NaN;
+
+                [~,order]=sort(lin_distance);
+                window(half_window,:)=order(1:n_template);
+            end
+
+            weighting_matrix=zeros(scans);
+            for artifact=1:scans
+                weighting_matrix(artifact,window(artifact,:))=1;
+            end
+            
+        else
+            
+            for half_window=1:scans
+                
+                lin_distance(1:half_window)=half_window:-1:1;
+                lin_distance(half_window+1:end)=2:1:scans-half_window+1;
+                
+                heart_scaling = n_template/min(ecg_outliers(ecg_outliers>0));
+                lin_distance = lin_distance + heart_scaling * cumsum([-ecg_outliers(1:half_window) +ecg_outliers(half_window+1:end)]);
+                lin_distance(ecg_outliers>0)=NaN;
+                
+                [~,order]=sort(lin_distance);
+                window(half_window,:)=order(1:n_template);
+            end
+
+            weighting_matrix=zeros(scans);
+            for artifact=1:scans
+                weighting_matrix(artifact,window(artifact,:))=1;
+            end
+        end
+    end
+    
+    if ~isempty(ecg_outliers) && ~isempty(realignment_motion)
 
         % Plot the combined ECG and realignment weighting matrix
         figure(3)
         subplot(3,1,1);
         hold on
-        plotyy(realignment_motion,TRheart)
+        plot(realignment_motion,'k')
+        plot(ecg_outliers,'r')
+        legend('Realignment',feature)
+        title('Realignment- and ECG-informed weighting matrix')
         xlim([0 scans])
         subplot(3,1,[2,3]);
         imagesc(weighting_matrix)
 
-    elseif ~isempty(TR_outliers) && p.Results.heart_and_motion==false
-
-        TRheart = zeros(1,scans);
-        TRheart(TR_outliers) = 1;
+    elseif ~isempty(ecg_outliers) && isempty(realignment_motion)
 
         % Plot the ECG-informed weighting matrix
         figure(3)
         subplot(3,1,1);
         hold on
-        plot(TRheart,'k')
+        plot(ecg_outliers,'k')
+        title('ECG-informed weighting matrix')
         xlim([0 scans])
         subplot(3,1,[2,3]);
         imagesc(weighting_matrix)
