@@ -30,32 +30,37 @@ under construction
 
 ### Usage example and typical workflow
 
-First, download the example data set. The folder 'example_data' contains a few exemplary files (ECG, motion data) necessary for performing the analysis. A full workspace with a complete data set (EEG, ECG, motion, experimental information) can be downloaded from the link in the readme in that folder.
+First, download the motion data and example workspace. The folder 'example_data' contains the former, which is necessary for performing the analysis. A full workspace with a complete data set (EEG, ECG, experimental information) can be downloaded from the link in the readme in that folder.
 
-When you have the data, make sure you have the following functions on your path: adaptive_weighting_matrix.m, linear_weighting.m, marker_detection.m, qrs_detect.m, realign_euclid.m, realignment_weighting.m, correction_matrix.m and baseline_correct.m
+When you have the data, make sure you have them as well as the following functions on your path: adaptive_weighting_matrix.m, linear_weighting.m, marker_detection.m, qrs_detect.m, realign_euclid.m, realignment_weighting.m, correction_matrix.m and baseline_correct.m
 Then use:
 
 ```
-artifactOnsets = marker_detection(events,TR_marker)
+artifactOnsets = marker_detection(events,TR_marker);
 ```
 
-The input arguments are given in the example workspace. To use the adaptive_weighting_matrix function you at least need to provide the number of scans and the size of the correction template (n_template). For more features, you should pass the sampling rate, ECG data, the output from the above function and the start sample of the first TR (artifactOnsets(1)) to the function. See default values and descriptions for further information on the input arguments. A possible usage might look like this:
+The input arguments are given in the example workspace - a cell array of event samples and the name of the marker set after each TR. To use the adaptive_weighting_matrix.m function you at least need to provide the number of scans and the size of the correction template (n_template). For more features like ECG informed corrections, you should pass the sampling rate, ECG data and the output from the above function to the function. See default values and descriptions for further information on the input arguments. A possible usage for an ECG-informed and realignment-informed weighting matrix might look like this:
 
 ```
-[weighting_matrix,realignment_motion,ecg_volumes] = adaptive_weighting_matrix(scans, n_template, 'sfreq', sfreq, 'ECG', ECG, 'events', artifactOnsets, start', artifactOnsets(1))
+[weighting_matrix,realignment_motion,ecg_outliers] = adaptive_weighting_matrix(scans, n_template, 'rp_file', rp_file, 'sfreq', sfreq, 'ECG', ECG, 'TR', TR, 'events', artifactOnsets);
 ```
 
-Alternatively, with some of the values from the workspace:
+Alternatively, if just a realignment-informed matrix is requested:
 
 ```
-[weighting_matrix,realignment_motion,ecg_volumes] = adaptive_weighting_matrix(420, 25, 'sfreq', 1000, 'ECG', ECG, 'events', artifactOnsets, 'start', artifactOnsets(1))
+[weighting_matrix,realignment_motion,~] = adaptive_weighting_matrix(scans, n_template, 'rp_file', rp_file, 'sfreq', sfreq, 'TR', TR, 'events', artifactOnsets);
+```
+
+Next, a baseline correction should be performed on the continuous data:
+
+```
+EEGbase = baseline_correct(EEG, n_channels, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
 ```
 
 After TR timings were extracted, the weighting matrix has been built and the input data was baseline corrected, the actual correction on the raw EEG data can be applied:
 
 ```
-EEGbase = baseline_correct(EEG, 1, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
-EEG_GA_corrected = correction_matrix(EEGbase, 1, weighting_matrix, artifactOnsets, 0, TR);
+EEG_GA_corrected = correction_matrix(EEGbase, n_channels, weighting_matrix, artifactOnsets, 0, TR);
 ```
 
 ![](workflow.png)
