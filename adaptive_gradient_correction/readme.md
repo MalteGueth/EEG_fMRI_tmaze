@@ -45,7 +45,7 @@ Alternatively, if just a realignment-informed matrix is requested or even a non-
 No modification:
 
 ```
-[weighting_matrix,realignment_motion,~] = adaptive_weighting_matrix(scans, n_template);
+[weighting_matrix,~,~] = adaptive_weighting_matrix(scans, n_template);
 ```
 
 Only realignment-informed:
