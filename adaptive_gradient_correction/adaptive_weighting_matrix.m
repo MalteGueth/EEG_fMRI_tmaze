@@ -1,3 +1,4 @@
+
 %{
 function adaptive_weighting_matrix
 This function and listed helper functions are all adapted from the analyses
@@ -12,12 +13,10 @@ gradient artifacts from electrophysiological data which was recorded
 inside the MRI environment. 
 The returned weighting matrix provides the basis for a sliding correction
 window that can be applied to continuous EEG and ECG data.
-
 REQUIRED INPUTS
 scans - A single integer representing total number of TR/acquired 
         functional images.
 n_template - The number of artifacts that make up the window length.
-
 OPTIONAL INPUTS
 rp_file - If a realignment parameter-informed average artifact subtraction
           (see Moosmann et al., 2009) is desired, assigning special weights 
@@ -32,7 +31,8 @@ threshold - If an rp_file was passed, this argument sets the threshold for
             indicating the minimum movement accelaration 
             (see realign_euclid.m) for biasing the weighting matrix. This 
             is recommended to avoid slow, probably none harmful head 
-            movements from influencing the correction.
+            movements from influencing the correction. The default value
+            is set to 0.5.
 ECG - If on top of the realignment parameter-informed average 
       artifact subtraction, an ECG-based correction is requested, 
       an ECG channel can be specified. Both a row index of an ECG 
@@ -61,7 +61,10 @@ heart_and_motion - A logical indicating whether a combination of
 ecg_feature - String values correspond to the ECG feature used to identify
               outlier artifact intervals. Valid inputs are 'r_peak', 'qrs', 
               'pq_time', 'qt_interval' and 'elevated_st'. Default is set to
-              'qrs'.
+              'qrs' for amplitude of R peaks, variance of the QRS complex,
+              PQ intervals larger than 200ms, duration of the QT interval,
+              and increases in the average amplitude of the ST component
+              respectively.
       
 OUTPUT
 weighting_matrix - An N-by-N matrix containing the weights for building a
@@ -95,7 +98,7 @@ checkNum = @(x) isnumeric(x) && isscalar(x);
 
 p=inputParser;
 p.addParameter('rp_file', char.empty(0,0), @ischar);
-p.addParameter('threshold', [], checkNum);
+p.addParameter('threshold', 0.5, checkNum);
 p.addParameter('ECG', [], checkNum)
 p.addParameter('start', [], checkNum)
 p.addParameter('sfreq', [], checkNum)
@@ -118,90 +121,9 @@ elseif nargin == 2
 % motion parameter-informed one.
 elseif ~isempty(p.Results.rp_file)
     
-    % Check if the provided realignment parameter file (rp file) exists
-    if ~exist(rp_file, 'file')
-        error('The given realignment parameter file does not exist. Please provide a correct file name.');
-    end
-    
-    % Load the rp file
-    motion_file = load(rp_file);
-    
-    % Calculate the movement magnitude or accelaration for translational
-    % and rotational movements
-    translational = realign_euclid(diff(motion_file(:,1:3)));
-    rotational = realign_euclid(diff(motion_file(:,4:6)))*180/pi;
-
-    % Threshold the results of the previous step to the requested value and
-    % combine both movement values
-    thresholded_trans = translational.*(translational>threshold);
-    thresholded_rot = rotational.*(rotational>threshold);
-    realignment_motion = thresholded_trans + thresholded_rot;
-    
-    % To prevent possible errors, adjust the length of the motion vector if
-    % there is a discrapency between the length of the original file and
-    % the vector
-    realignment_motion = [zeros(1,length(motion_file)-length(realignment_motion)) realignment_motion];
-    
-    % Get the total number of scans listed in the realignment_motion vector
-    n_data=length(realignment_motion);
-
-    % Compare that length to the amount of scans passed to the function to
-    % account for dummy scans
-    diff_n=scans-n_data;
-    % Adjust the length of the movement matrix in accordance to the
-    % difference
-    realignment_motion =[zeros(1,diff_n),realignment_motion];
-    
-    % Perform the following loop only if there is a rp larger than 0 (above
-    % threshold)
-    if max(realignment_motion) > 0
-        
-        % Set up variables and the moving window as shown above for the
-        % linear weighting
-        window=zeros(scans,n_template);
-        lin_distance=zeros(1,scans);
-        for half_window=1:scans
-
-            lin_distance(1:half_window)=half_window:-1:1;
-            lin_distance(half_window+1:end)=2:1:scans-half_window+1;
-
-            % Create a scale for motion artifacts detected through the
-            % ratio of artifact templates and the minimum movement artifact
-            % (effect of the smallest movement over the number of artifacts
-            % / over time)
-            motion_scaling = n_template/min(realignment_motion(realignment_motion>0));
-            % Add the (linear) distance to the cumulative sum of motion
-            % artifacts
-            lin_distance = lin_distance + motion_scaling * cumsum([-realignment_motion(1:half_window) +realignment_motion(half_window+1:end)]);
-            lin_distance(realignment_motion>0)= NaN;
-            
-            % Again, as above for the linear weights...
-            [~,order]=sort(lin_distance);
-            window(half_window,:)=order(1:n_template);
-        end
-        
-        weighting_matrix=zeros(scans);
-        for artifact=1:scans
-            weighting_matrix(artifact,window(artifact,:))=1;
-        end
-        
-        % For checking results, plot the weighting matrix (scans-by-scans)
-        % and mind the mid diagonal in relation to accelaration values 
-        % exceeding threshold in the above matrix plotting the motion
-        % vector
-        figure(1)
-        subplot(3,1,1);
-        plot(realignment_motion,'k')
-        xlim([0 scans])
-        subplot(3,1,[2,3]);
-        imagesc(weighting_matrix)
-        colormap(gray)
-
-    else
-        % Show a warning if no value exceeded threshold and explain the
-        % consequences
-        warning('None of the provided realignment parameters exceed the given threshold. This will result in an unmodified correction window. If this is not wanted, consider setting a lower movement threshold and re-run this function.')
-    end
+    % Create a weighting matrix and modify it in accordance
+    % to provided motion data
+    [weighting_matrix, realginment_motion] = realignment_weighting(scans,n_template,rp_file,threshold);
     
 % If enough arguments for an ECG-informed average artifact 
 % subtraction are passed, add another modification of the weighting
@@ -209,78 +131,12 @@ elseif ~isempty(p.Results.rp_file)
 elseif ~isempty(p.Results.ECG)
     
     % Create a modifiable weighting matrix for the total number of scans
-    % with ones for each scan as default
+    % with a realignment-informed correction as default
     switch (p.Results.heart_and_motion)
         case false
                 weighting_matrix = linear_weighting(scans,n_template);
         case true
-            % Check if the provided realignment parameter file (rp file) exists
-            if ~exist(rp_file, 'file')
-                error('The given realignment parameter file does not exist. Please provide a correct file name.');
-            end
-
-            % Load the rp file
-            motion_file = load(rp_file);
-
-            % Calculate the movement magnitude or accelaration for translational
-            % and rotational movements
-            translational = realign_euclid(diff(motion_file(:,1:3)));
-            rotational = realign_euclid(diff(motion_file(:,4:6)))*180/pi;
-
-            % Threshold the results of the previous step to the requested value and
-            % combine both movement values
-            thresholded_trans = translational.*(translational>threshold);
-            thresholded_rot = rotational.*(rotational>threshold);
-            realignment_motion = thresholded_trans + thresholded_rot;
-
-            % To prevent possible errors, adjust the length of the motion vector if
-            % there is a discrapency between the length of the original file and
-            % the vector
-            realignment_motion = [zeros(1,length(motion_file)-length(realignment_motion)) realignment_motion];
-
-            % Get the total number of scans listed in the realignment_motion vector
-            n_data=length(realignment_motion);
-
-            % Compare that length to the amount of scans passed to the function to
-            % account for dummy scans
-            diff_n=scans-n_data;
-            % Adjust the length of the movement matrix in accordance to the
-            % difference
-            realignment_motion =[zeros(1,diff_n),realignment_motion];
-
-            % Perform the following loop only if there is a rp larger than 0 (above
-            % threshold)
-            if max(realignment_motion) > 0
-
-                % Set up variables and the moving window as shown above for the
-                % linear weighting
-                window=zeros(scans,n_template);
-                lin_distance=zeros(1,scans);
-                for half_window=1:scans
-
-                    lin_distance(1:half_window)=half_window:-1:1;
-                    lin_distance(half_window+1:end)=2:1:scans-half_window+1;
-
-                    % Create a scale for motion artifacts detected through the
-                    % ratio of artifact templates and the minimum movement artifact
-                    % (effect of the smallest movement over the number of artifacts
-                    % / over time)
-                    motion_scaling = n_template/min(realignment_motion(realignment_motion>0));
-                    % Add the (linear) distance to the cumulative sum of motion
-                    % artifacts
-                    lin_distance = lin_distance + motion_scaling * cumsum([-realignment_motion(1:half_window) +realignment_motion(half_window+1:end)]);
-                    lin_distance(realignment_motion>0)= NaN;
-
-                    % Again, as above for the linear weights...
-                    [~,order]=sort(lin_distance);
-                    window(half_window,:)=order(1:n_template);
-                end
-
-                weighting_matrix=zeros(scans);
-                for artifact=1:scans
-                    weighting_matrix(artifact,window(artifact,:))=1;
-                end
-             end
+                [weighting_matrix, realginment_motion] = realignment_weighting(scans,n_template,rp_file,threshold);
     end
         
     
@@ -296,13 +152,14 @@ elseif ~isempty(p.Results.ECG)
     % to epoch the data around the R peak
     switch (p.Results.ecg_feature)
         case 'r_peak'
+
             % Use peak detection to identify R peaks in the ECG and get
             % indices representing samples at which a peak was reached (see
             % qrs_detect)
-            [R_peaks,~,~,~,~,~] = qrs_detect(ECGcorrected,sfreq,artifactOnsets(1));
+            [R_peaks,~,~,~,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,artifactOnsets(1));
             
             % Get the amplitude values and search for outlier R peaks
-            Ramp = ECGcorrected(R_peaks);
+            Ramp = ECGfilt(R_peaks);
             ecg_outliers = isoutlier(Ramp,'mean');
             
             % Check if there are any outliers at all
@@ -315,23 +172,125 @@ elseif ~isempty(p.Results.ECG)
                 % Pick the TR interval the outlier occured in by first 
                 % aligning TR and sample points (TR = (samples/sfreq)/TR)
                 TR_outliers = ceil((TR_outliers/sfreq)/TR);
+                % In case there are outliers beyond the total number of
+                % scans, delete them
+                TR_outliers(TR_outliers>scans) = [];
                 % Modify the weighting matrix previously used on the ECG
                 weighting_matrix(TR_outliers) = NaN;
             end
         case 'qrs'
-            % ... in addition to 'r_peak' get the Q and S timings
-            [R_peaks,R_segments,~,q,s,~] = qrs_detect(ECGcorrected,sfreq);
+
+            % ... in addition to the R peaks, get the Q and S timings
+            [~,~,~,q,s,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq);
             
-            % To derive a measure indicating conspicuous ECG segments, calculate
-            % the variance for each segment as well as the average variance
-            % centered around the qrs complex
-            smaller_segments = R_segments(:,100:300);
-            ecg_variance = var(smaller_segments,0,2);
-            ecg_outliers = isoutlier(ecg_variance,'mean');
+            % Get the qrs variance
+            qrs = zeros(1,length(q));
+            for beat = length(q)
+                qrs(beat) = ECGfilt(q(beat):s(beat));
+            end
+            qrs_variance = var(qrs,0,2);
+            ecg_outliers = isoutlier(qrs_variance,'mean');
+
+            if isempty(ecg_outliers)
+                warning('None of the QRS variances exceed the outlier threshold. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
+            else
+                TR_outliers = ecg_outliers==1;
+                TR_outliers = ceil((TR_outliers/sfreq)/TR);
+                TR_outliers(TR_outliers>scans) = [];
+                weighting_matrix(TR_outliers) = NaN;
+            end
             
         case 'pq_time'
+
+             % ... get the P and Q timings
+            [~,~,p,q,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq);
+            
+            % Get the PQ interval
+            pq_time = zeros(1,length(p));
+            for beat = length(p)
+                pq_time(beat) = length(ECGfilt(p(beat):q(beat)));
+            end
+            % Find the PQ components over 200ms        
+            ecg_outliers = pq_time(pq_time>=(sfreq/5));
+
+            if isempty(ecg_outliers)
+                warning('None of the PQ intervals exceed 200ms. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
+            else
+                TR_outliers = ecg_outliers==1;
+                TR_outliers = ceil((TR_outliers/sfreq)/TR);
+                TR_outliers(TR_outliers>scans) = [];
+                weighting_matrix(TR_outliers) = NaN;
+            end
         case 'qt_interval'
+
+             % ... get the Q and T timings
+            [~,~,~,q,~,t,ECGfilt] = qrs_detect(ECGcorrected,sfreq);
+            
+            % Get the QT interval
+            qt_interval = zeros(1,length(q));
+            for beat = length(p)
+                qt_interval(beat) = length(ECGfilt(q(beat):t(beat)));
+            end
+            % Find outlier QT intervals       
+            ecg_outliers = isoutlier(qt_interval,'mean');
+
+            if isempty(ecg_outliers)
+                warning('None of the QT intervals exceed the outlier threshold. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
+            else
+                TR_outliers = ecg_outliers==1;
+                TR_outliers = ceil((TR_outliers/sfreq)/TR);
+                TR_outliers(TR_outliers>scans) = [];
+                weighting_matrix(TR_outliers) = NaN;
+            end
         case 'elevated_st'
+
+             % ... get the S and T timings
+            [~,~,~,~,s,t,ECGfilt] = qrs_detect(ECGcorrected,sfreq);
+            
+            % Get the ST amplitude
+            st_amp = zeros(1,length(q));
+            for beat = length(s)
+                st_amp(beat) = abs(ECGfilt(s(beat):t(beat)));
+            end
+            % Find outlier QT intervals       
+            ecg_outliers = isoutlier(st_amp,'mean');
+
+            if isempty(ecg_outliers)
+                warning('None of the ST amplitudes exceed the outlier threshold. This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG feature.')
+            else
+                TR_outliers = ecg_outliers==1;
+                TR_outliers = ceil((TR_outliers/sfreq)/TR);
+                TR_outliers(TR_outliers>scans) = [];
+                weighting_matrix(TR_outliers) = NaN;
+            end
     end
 
+    if ~isempty(TR_outliers) && p.Results.heart_and_motion==true
+
+        TRheart = zeros(1,scans);
+        TRheart(TR_outliers) = 1;
+
+        % Plot the combined ECG and realignment weighting matrix
+        figure(3)
+        subplot(3,1,1);
+        hold on
+        plotyy(realignment_motion,TRheart)
+        xlim([0 scans])
+        subplot(3,1,[2,3]);
+        imagesc(weighting_matrix)
+
+    elseif ~isempty(TR_outliers) && p.Results.heart_and_motion==false
+
+        TRheart = zeros(1,scans);
+        TRheart(TR_outliers) = 1;
+
+        % Plot the ECG-informed weighting matrix
+        figure(3)
+        subplot(3,1,1);
+        hold on
+        plot(TRheart,'k')
+        xlim([0 scans])
+        subplot(3,1,[2,3]);
+        imagesc(weighting_matrix)
+    end
 end
