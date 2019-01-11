@@ -7,13 +7,11 @@ segmentation of heart beats is successful, the average heart beat is
 plotted.
 The basic procedures for peak detection are based on norms and workflows as
 implemented in mne python: https://github.com/mne-tools/mne-python .
-
 REQUIRED INPUTS
 ECG - An ECG channel provided as a row vector of samples (in Microvolt).
 sfreq - The sampling rate in Hz.
 start - The number of sample points recorded before the onset of the fMRI
         recording.
-
 OPTIONAL INPUTS
 threshold - A factor for determining a threshold for detection of R peaks.
             Inputs can be integers or 'auto'. The latter results in an
@@ -146,9 +144,9 @@ if nargout > 1
             R_segments(peak,:) = ECGfilt(R_peaks(peak)-pnts_step:R_peaks(peak)+pnts_step);
             % Search before (P,Q) and after (S,T) the R peak for the next
             % largest negative and positive peaks
-            ECG_inverted = -ECGfilt(R_peaks(peak):R_peaks(peak)+pnts_step/5);
+            ECG_inverted = -ECGfilt(R_peaks(peak):R_peaks(peak)+(pnts_step/5));
             [~,s(peak)] = max(ECG_inverted);
-            % Adjust the index for the smaller value of window for peak
+            % Adjust the index for the smaller value of the window for peak
             % detection
             s(peak) = s(peak)+R_peaks(peak);
             % Now the same for the other components
@@ -157,13 +155,13 @@ if nargout > 1
             [~,t(peak)] = max(ECG_inverted);
             t(peak) = t(peak)+s(peak);
             % Search for Q approx. 100ms before R
-            ECG_inverted = -ECGfilt(R_peaks(peak)-pnts_step/5:R_peaks(peak));
+            ECG_inverted = -ECGfilt(R_peaks(peak)-(pnts_step/5):R_peaks(peak));
             [~,q(peak)] = max(ECG_inverted);
-            q(peak) = q(peak)+(R_peaks(peak)-pnts_step/5);
-            % Search for P approx. 250ms before Q
-            ECGsmall = ECGfilt(q(peak)-pnts_step/2:q(peak));
+            q(peak) = q(peak)+(R_peaks(peak)-(pnts_step/5));
+            % Search for P approx. 350ms before Q
+            ECGsmall = ECGfilt(q(peak)-(pnts_step*0.7):q(peak));
             [~,p(peak)] = max(ECGsmall);
-            p(peak) = p(peak)+(q(peak)-pnts_step);
+            p(peak) = p(peak)+(q(peak)-(pnts_step*0.7));
         end
     end
     
@@ -183,7 +181,7 @@ if nargout > 1
     mean_heartBeat=mean(R_segments,1)/1000;
     [~,Raverage] = max(mean_heartBeat);
 
-    figure
+    figure(2)
     hold on
     plot(mean_heartBeat)
     plot(Raverage,mean_heartBeat(Raverage),'rv','MarkerFaceColor','r')
