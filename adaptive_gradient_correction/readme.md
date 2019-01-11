@@ -70,11 +70,15 @@ EEG_GA_corrected = correction_matrix(EEGbase, n_channels, weighting_matrix, arti
 
 ![](workflow.png)
 
-### Running tests
+### Evaluation
+
+In order to evaluate the userfulness of the implemented approaches, the data should be further preprocessed. Afterwards, signal_quality.m can compute two measures for comparing uncorrected and corrected signal Of course, this could also be used to compare two different correction methods.
 
 ```
-under construction
+[SNR, powerRatio] = signal_quality(ERP_GAcorr,ERPuncorr,channel,PowerEEG,PowerEEGfMRI)
 ```
+
+The remaining part of the pre-processing in this repository is currently performed in mne python (see _[jupyter notebooks] [jp]_).
 
 ## Contributing
 
@@ -84,6 +88,7 @@ under construction
 4. Push to the branch (`git push origin feature/`)
 5. Create a new Pull Request
 
-<!-- Markdown link & img dfn's -->
+<!-- Markdown -->
 [bergen_toolbox]: https://github.com/jnvandermeer/BergenToolboxModified
 [lap_page]: http://neurostimlab.com
+[jp]: [SNR, powerRatio] = signal_quality(ERP_GAcorr,ERPuncorr,channel,PowerEEG,PowerEEGfMRI)
