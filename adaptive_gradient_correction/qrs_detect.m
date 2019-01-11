@@ -30,10 +30,11 @@ R_peaks - A vector of samples/indices for each R peak over the continuous
 R_segments - An array of heart beat epochs by sampling points. Each epoch
              has a duration of a second and is centered around the R peak.
 p,q,s,t - A vector analogous to the R_peaks output, indicating the peak of
-          the other heart beat components.  
+          the other heart beat components. 
+ECGfilt - The cleaned ECG signal used for detection.
 %}
 
-function [R_peaks,R_segments,p,q,s,t] = qrs_detect(ECG, sfreq, start, varargin)
+function [R_peaks,R_segments,p,q,s,t,ECGfilt] = qrs_detect(ECG, sfreq, start, varargin)
 
 validString = 'auto';
 checkString = @(x) any(validatestring(x,validString));
