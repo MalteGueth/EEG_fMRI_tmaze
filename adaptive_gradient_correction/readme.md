@@ -27,7 +27,8 @@ All of the analyses are written for Matlab R1018b and can be performed without e
 First, download the motion data and example workspace. The folder 'example_data' contains the former, which is necessary for performing the analysis. A full workspace with a complete data set (EEG, ECG, experimental information) can be downloaded from the link in the readme in that folder.
 
 When you have the data, make sure you have them as well as the following functions on your path: adaptive_weighting_matrix.m, linear_weighting.m, marker_detection.m, qrs_detect.m, realign_euclid.m, realignment_weighting.m, correction_matrix.m and baseline_correct.m, find_ecg_outliers
-Then use:
+
+Then, use:
 
 ```
 artifactOnsets = marker_detection(events,TR_marker);
