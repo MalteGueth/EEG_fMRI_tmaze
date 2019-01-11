@@ -3,8 +3,7 @@
 
 The functions contained in this repository directory were created to provide a number of adaptive correction approaches
 for removing gradient artifacts from EEG signals recorded in the MRI environment. These aim to account
-for head movements as well as distortions of the average artifact through ballistocardiac artifacts. All of the
-analyses are written for Matlab R1018b and can be performed without eeglab (see Usage example). 
+for head movements as well as distortions of the average artifact through ballistocardiac artifacts.
 
 The outlined analyses are adapted from the approaches presented in Allen, Josephs, & Turner (2000) as well as 
 Moosmann, Schoenfelder, Specht Scheeringa, Nordby, & Hudgahl (2009). Their original functions can be found in
@@ -21,7 +20,7 @@ for Cognitive Neuroimaging and Stimulation][lap_page]._
 
 ### Prerequisites
 
-under construction
+All of the analyses are written for Matlab R1018b and can be performed without eeglab (see Usage example). 
 
 ### Installing
 
