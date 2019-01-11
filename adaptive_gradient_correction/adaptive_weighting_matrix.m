@@ -1,4 +1,3 @@
-
 %{
 function adaptive_weighting_matrix
 This function and listed helper functions are all adapted from the analyses
@@ -13,10 +12,12 @@ gradient artifacts from electrophysiological data which was recorded
 inside the MRI environment. 
 The returned weighting matrix provides the basis for a sliding correction
 window that can be applied to continuous EEG and ECG data.
+
 REQUIRED INPUTS
 scans - A single integer representing total number of TR/acquired 
         functional images.
 n_template - The number of artifacts that make up the window length.
+
 OPTIONAL INPUTS
 rp_file - If a realignment parameter-informed average artifact subtraction
           (see Moosmann et al., 2009) is desired, assigning special weights 
@@ -49,7 +50,7 @@ ECG - If on top of the realignment parameter-informed average
       The parameter indicating outlier heart beats can be chosen by
       the ecg_feature argument. The default is set to 'qrs'.
 start - The number of sample points recorded before the onset of the fMRI
-        recording.
+        recording. The default is set to the first sampling point.
 sfreq - The sampling rate in Hz.
 heart_and_motion - A logical indicating whether a combination of
                    realignment- and ECG-informed artifact correction shall
@@ -79,6 +80,12 @@ ecg_outliers - A row vector of R peaks with a value for each heart beat.
                ECG feature values.
               
 Helper and related functions:
+linear_weighting.m - Creates a square weighting matrix (scans-by-scans)
+                     with equal weights for each scan interval.
+realignment_weighting.m - Creates a square weighting matrix (scans-by-scans)
+                          modfified depending on large movements.
+baseline_correct.m - Performs a baseline correction on each artifact interval
+                     according to a requested method.
 marker_detection.m - Identifies all artifact intervals over the EEG 
                      signal based on TR markers set during the 
                      concurrent recording.
@@ -100,7 +107,8 @@ p=inputParser;
 p.addParameter('rp_file', char.empty(0,0), @ischar);
 p.addParameter('threshold', 0.5, checkNum);
 p.addParameter('ECG', [], checkNum)
-p.addParameter('start', [], checkNum)
+p.addParameter('events', [])
+p.addParameter('start', 1, checkNum)
 p.addParameter('sfreq', [], checkNum)
 p.addParameter('heart_and_motion', true, @islogical)
 p.addParameter('ecg_feature', 'qrs', checkString)
@@ -125,7 +133,7 @@ elseif ~isempty(p.Results.rp_file)
     % to provided motion data
     [weighting_matrix, realginment_motion] = realignment_weighting(scans,n_template,rp_file,threshold);
     
-% If enough arguments for an ECG-informed average artifact 
+% If input arguments for an ECG-informed average artifact 
 % subtraction are passed, add another modification of the weighting
 % matrix
 elseif ~isempty(p.Results.ECG)
@@ -142,11 +150,11 @@ elseif ~isempty(p.Results.ECG)
     
     % Baseline correct the ECG data, before subtracting the average
     % artifact
-    ECGbase = BaselineCorrect(ECG, 1, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
+    ECGbase = baseline_correct(ECG, 1, TR, p.Results.events, weighting_matrix, 1, 0, TR);
 
     % Apply a sliding correction window built from the weighting matrix to
     % the ECG data
-    ECGcorrected = correction_matrix(ECGbase,1,weighting_matrix,artifactOnsets,0,TR);
+    ECGcorrected = correction_matrix(ECGbase,1,weighting_matrix,p.Results.events,0,TR);
     
     % Use the information about R peaks to identify the Q and S samples and
     % to epoch the data around the R peak
@@ -156,7 +164,7 @@ elseif ~isempty(p.Results.ECG)
             % Use peak detection to identify R peaks in the ECG and get
             % indices representing samples at which a peak was reached (see
             % qrs_detect)
-            [R_peaks,~,~,~,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,artifactOnsets(1));
+            [R_peaks,~,~,~,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,p.Results.events(1));
             
             % Get the amplitude values and search for outlier R peaks
             Ramp = ECGfilt(R_peaks);
