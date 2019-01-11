@@ -35,6 +35,8 @@ under construction
 under construction
 ```
 
+![](workflow.png)
+
 ### Running tests
 
 ```
@@ -44,9 +46,9 @@ under construction
 ## Contributing
 
 1. Fork it (<https://github.com/MalteGueth/EEG_fMRI_tmaze/fork>)
-2. Create your feature branch (`git checkout -b feature/fooBar`)
-3. Commit your changes (`git commit -am 'Add some fooBar'`)
-4. Push to the branch (`git push origin feature/fooBar`)
+2. Create your feature branch (`git checkout -b feature/`)
+3. Commit your changes (`git commit -am `)
+4. Push to the branch (`git push origin feature/`)
 5. Create a new Pull Request
 
 <!-- Markdown link & img dfn's -->
