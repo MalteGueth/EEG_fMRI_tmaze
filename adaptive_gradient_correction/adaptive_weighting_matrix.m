@@ -164,7 +164,7 @@ elseif ~isempty(p.Results.ECG)
             % Use peak detection to identify R peaks in the ECG and get
             % indices representing samples at which a peak was reached (see
             % qrs_detect)
-            [R_peaks,~,~,~,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,p.Results.events(1));
+            [R_peaks,~,~,~,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,p.Results.start);
             
             % Get the amplitude values and search for outlier R peaks
             Ramp = ECGfilt(R_peaks);
