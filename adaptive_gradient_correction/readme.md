@@ -91,4 +91,4 @@ The remaining part of the pre-processing in this repository is currently perform
 <!-- Markdown -->
 [bergen_toolbox]: https://github.com/jnvandermeer/BergenToolboxModified
 [lap_page]: http://neurostimlab.com
-[jp]: [SNR, powerRatio] = signal_quality(ERP_GAcorr,ERPuncorr,channel,PowerEEG,PowerEEGfMRI)
+[jp]: https://github.com/MalteGueth/EEG_fMRI_tmaze/tree/master/preprocessing
