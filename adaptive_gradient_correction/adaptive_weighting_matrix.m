@@ -49,9 +49,9 @@ ECG - If on top of the realignment parameter-informed average
       artifacts. 
       The parameter indicating outlier heart beats can be chosen by
       the ecg_feature argument. The default is set to 'qrs'.
-start - The number of sample points recorded before the onset of the fMRI
-        recording. The default is set to the first sampling point.
-sfreq - The sampling rate in Hz.
+events - A set of artifact timings as given out by 'marker_detection.m'.
+TR - The time of repetition utilized during functional image acquisition.
+sfreq - The EEG/ECG sampling rate in Hz.
 heart_and_motion - A logical indicating whether a combination of
                    realignment- and ECG-informed artifact correction shall
                    be performed. Default is set to true. If set to false,
@@ -107,8 +107,8 @@ p=inputParser;
 p.addParameter('rp_file', char.empty(0,0), @ischar);
 p.addParameter('threshold', 0.5, checkNum);
 p.addParameter('ECG', [], checkNum)
+p.addParameter('TR', [], checkNum)
 p.addParameter('events', [])
-p.addParameter('start', 1, checkNum)
 p.addParameter('sfreq', [], checkNum)
 p.addParameter('heart_and_motion', true, @islogical)
 p.addParameter('ecg_feature', 'qrs', checkString)
@@ -131,6 +131,7 @@ elseif ~isempty(p.Results.rp_file)
     
     % Create a weighting matrix and modify it in accordance
     % to provided motion data
+    threshold = p.Results.threshold;
     [weighting_matrix, realginment_motion] = realignment_weighting(scans,n_template,rp_file,threshold);
     
 % If input arguments for an ECG-informed average artifact 
@@ -140,6 +141,7 @@ elseif ~isempty(p.Results.ECG)
     
     % Create a modifiable weighting matrix for the total number of scans
     % with a realignment-informed correction as default
+    threshold = p.Results.threshold;
     switch (p.Results.heart_and_motion)
         case false
                 weighting_matrix = linear_weighting(scans,n_template);
@@ -147,24 +149,28 @@ elseif ~isempty(p.Results.ECG)
                 [weighting_matrix, realginment_motion] = realignment_weighting(scans,n_template,rp_file,threshold);
     end
         
-    
     % Baseline correct the ECG data, before subtracting the average
     % artifact
-    ECGbase = baseline_correct(ECG, 1, TR, p.Results.events, weighting_matrix, 1, 0, TR);
+    TR = p.Results.TR;
+    ECG = p.Results.ECG;
+    artifactOnsets = p.Results.events;
+    ECGbase = baseline_correct(ECG, 1, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
 
     % Apply a sliding correction window built from the weighting matrix to
     % the ECG data
-    ECGcorrected = correction_matrix(ECGbase,1,weighting_matrix,p.Results.events,0,TR);
+    ECGcorrected = correction_matrix(ECGbase,1,weighting_matrix,artifactOnsets,0,TR);
     
     % Use the information about R peaks to identify the Q and S samples and
     % to epoch the data around the R peak
+    start = artifactOnsets(1);
+    sfreq = p.Results.sfreq;
     switch (p.Results.ecg_feature)
         case 'r_peak'
 
             % Use peak detection to identify R peaks in the ECG and get
             % indices representing samples at which a peak was reached (see
             % qrs_detect)
-            [R_peaks,~,~,~,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,p.Results.start);
+            [R_peaks,~,~,~,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
             % Get the amplitude values and search for outlier R peaks
             Ramp = ECGfilt(R_peaks);
@@ -189,7 +195,7 @@ elseif ~isempty(p.Results.ECG)
         case 'qrs'
 
             % ... in addition to the R peaks, get the Q and S timings
-            [~,~,~,q,s,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq);
+            [~,~,~,q,s,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
             % Get the qrs variance
             qrs = zeros(1,length(q));
@@ -211,7 +217,7 @@ elseif ~isempty(p.Results.ECG)
         case 'pq_time'
 
              % ... get the P and Q timings
-            [~,~,p,q,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq);
+            [~,~,p,q,~,~,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
             % Get the PQ interval
             pq_time = zeros(1,length(p));
@@ -232,7 +238,7 @@ elseif ~isempty(p.Results.ECG)
         case 'qt_interval'
 
              % ... get the Q and T timings
-            [~,~,~,q,~,t,ECGfilt] = qrs_detect(ECGcorrected,sfreq);
+            [~,~,~,q,~,t,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
             % Get the QT interval
             qt_interval = zeros(1,length(q));
@@ -253,7 +259,7 @@ elseif ~isempty(p.Results.ECG)
         case 'elevated_st'
 
              % ... get the S and T timings
-            [~,~,~,~,s,t,ECGfilt] = qrs_detect(ECGcorrected,sfreq);
+            [~,~,~,~,s,t,ECGfilt] = qrs_detect(ECGcorrected,sfreq,start);
             
             % Get the ST amplitude
             st_amp = zeros(1,length(q));
