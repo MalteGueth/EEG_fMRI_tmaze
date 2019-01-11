@@ -38,6 +38,7 @@ The input arguments are given in the example workspace - a cell array of event s
 ```
 [weighting_matrix,realignment_motion,ecg_outliers] = adaptive_weighting_matrix(scans, n_template, 'rp_file', rp_file, 'sfreq', sfreq, 'ECG', ECG, 'TR', TR, 'events', artifactOnsets);
 ```
+Output plots for this specific example can be found in the plots folder.
 
 The default value for the ECG-informed weighting matrix is set to the variance of the QRS complex. Use 'ecg_feature' and one of the available ECG parameters ('r_peak', 'qrs', 'pq_time', 'qt_time', 'st_amp').
 Alternatively, if just a realignment-informed matrix is requested or even a non-modified weighting matrix, pass either only the number of scans and the number of scans constituting the template window length or both plus a realignment parameter file, the sampling rate, the TR and the TR event timings.
