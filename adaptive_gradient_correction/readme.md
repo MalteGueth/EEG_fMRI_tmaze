@@ -78,7 +78,7 @@ In order to evaluate the userfulness of the implemented approaches, the data sho
 [SNR, powerRatio] = signal_quality(ERP_GAcorr,ERPuncorr,channel,PowerEEG,PowerEEGfMRI)
 ```
 
-The remaining part of the pre-processing in this repository is currently performed in mne python (see _[jupyter notebooks] [jp]_).
+The remaining part of the pre-processing in this repository is currently performed in mne python (see _[jupyter notebooks][jp]_).
 
 ## Contributing
 
