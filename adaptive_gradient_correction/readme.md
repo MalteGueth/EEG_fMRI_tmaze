@@ -26,7 +26,7 @@ All of the analyses are written for Matlab R1018b and can be performed without e
 
 First, download the motion data and example workspace. The folder 'example_data' contains the former, which is necessary for performing the analysis. A full workspace with a complete data set (EEG, ECG, experimental information) can be downloaded from the link in the readme in that folder.
 
-When you have the data, make sure you have them as well as the following functions on your path: adaptive_weighting_matrix.m, linear_weighting.m, marker_detection.m, qrs_detect.m, realign_euclid.m, realignment_weighting.m, correction_matrix.m and baseline_correct.m, find_ecg_outliers
+When you have the data, make sure you have them as well as the following functions on your path: _adaptive_weighting_matrix.m, linear_weighting.m, marker_detection.m, qrs_detect.m, realign_euclid.m, realignment_weighting.m, correction_matrix.m and baseline_correct.m, find_ecg_outliers_
 
 Then, use:
 
@@ -34,7 +34,7 @@ Then, use:
 artifactOnsets = marker_detection(events,TR_marker);
 ```
 
-The input arguments are given in the example workspace - a cell array of event samples and the name of the marker set after each TR. To use the adaptive_weighting_matrix.m function you at least need to provide the number of scans and the size of the correction template (n_template). For more features like ECG informed corrections, you should pass the sampling rate, ECG data and the output from the above function to the function. See default values and descriptions for further information on the input arguments. A possible usage for an ECG-informed and realignment-informed weighting matrix might look like this:
+The input arguments are given in the example workspace - a cell array of event samples and the name of the marker set after each TR. To use the _adaptive_weighting_matrix.m_ function you at least need to provide the number of scans and the size of the correction template (n_template). For more features like ECG informed corrections, you should pass the sampling rate, ECG data and the output from the above function to the function. See default values and descriptions for further information on the input arguments. A possible usage for an ECG-informed and realignment-informed weighting matrix might look like this:
 
 ```
 [weighting_matrix,realignment_motion,ecg_outliers] = adaptive_weighting_matrix(scans, n_template, 'rp_file', rp_file, 'sfreq', sfreq, 'ECG', ECG, 'TR', TR, 'events', artifactOnsets);
@@ -72,7 +72,7 @@ EEG_GA_corrected = correction_matrix(EEGbase, n_channels, weighting_matrix, arti
 
 ### Evaluation
 
-In order to evaluate the userfulness of the implemented approaches, the data should be further preprocessed. Afterwards, signal_quality.m can compute two measures for comparing uncorrected and corrected signal Of course, this could also be used to compare two different correction methods.
+In order to evaluate the userfulness of the implemented approaches, the data should be further preprocessed. Afterwards, _signal_quality.m_ can compute two measures for comparing uncorrected and corrected signal. Of course, this could also be used to compare two different correction methods by calculating two correlations with uncorredted EEG signal - one for each method.
 
 ```
 [SNR, powerRatio] = signal_quality(ERP_GAcorr,ERPuncorr,channel,PowerEEG,PowerEEGfMRI)
