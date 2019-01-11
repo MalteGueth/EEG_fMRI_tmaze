@@ -145,6 +145,12 @@ elseif ~isempty(p.Results.rp_file) && isempty(p.Results.ECG)
 % matrix
 elseif ~isempty(p.Results.ECG)
     
+    TR = p.Results.TR;
+    ECG = p.Results.ECG;
+    feature = p.Results.ecg_feature;
+    artifactOnsets = p.Results.events;
+    heart_motion = p.Results.heart_and_motion;
+    
     % Create a modifiable weighting matrix for the total number of scans
     % with a realignment-informed correction as default
     rp_file = p.Results.rp_file;
@@ -158,9 +164,6 @@ elseif ~isempty(p.Results.ECG)
         
     % Baseline correct the ECG data, before subtracting the average
     % artifact
-    TR = p.Results.TR;
-    ECG = p.Results.ECG;
-    artifactOnsets = p.Results.events;
     ECGbase = baseline_correct(ECG, 1, TR, artifactOnsets, weighting_matrix, 1, 0, TR);
 
     % Apply a sliding correction window built from the weighting matrix to
@@ -256,8 +259,7 @@ elseif ~isempty(p.Results.ECG)
             ecg_outliers = find_ecg_outliers(st_ind,scans,sfreq,TR);
     end
     
-    feature = p.Results.ecg_feature;
-    if isempty(ecg_outliers)
+    if all(ecg_outliers==0)
         warning(['None of heart beat events show an above threshold value for the chosen measure (' feature '). This will result in an unmodified correction window. If this is not wanted, consider picking a different ECG parameter.'])
     % Redo the weighting matrix with the newly found ecg outliers (see
     % linear_weighting.m and realignment_weighting.m)
@@ -265,7 +267,7 @@ elseif ~isempty(p.Results.ECG)
         window=zeros(scans,n_template);
         lin_distance=zeros(1,scans);
 
-        switch (p.Results.heart_and_motion)
+        switch heart_motion
             case true
             
                 for half_window=1:scans
@@ -278,8 +280,7 @@ elseif ~isempty(p.Results.ECG)
                     lin_distance(realignment_motion>0)= NaN;
 
                     % Insert the ECG-informed outliers
-                    heart_scaling = n_template/min(ecg_outliers(ecg_outliers>0));
-                    lin_distance = lin_distance + heart_scaling * cumsum([-ecg_outliers(1:half_window) +ecg_outliers(half_window+1:end)]);
+                    lin_distance = lin_distance + n_template * cumsum([-ecg_outliers(1:half_window) +ecg_outliers(half_window+1:end)]);
                     lin_distance(ecg_outliers>0)=NaN;
 
                     [~,order]=sort(lin_distance);
@@ -291,7 +292,7 @@ elseif ~isempty(p.Results.ECG)
                     weighting_matrix(artifact,window(artifact,:))=1;
                 end
             
-            case true
+            case false
 
                 for half_window=1:scans
 
@@ -321,7 +322,7 @@ elseif ~isempty(p.Results.ECG)
         hold on
         plot(realignment_motion,'k')
         plot(ecg_outliers,'r')
-        legend('Realignment',feature)
+        legend('Realignment',feature, 'Interpreter', 'none')
         title('Realignment- and ECG-informed weighting matrix')
         xlim([0 scans])
         subplot(3,1,[2,3]);
