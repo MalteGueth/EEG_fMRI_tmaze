@@ -17,7 +17,7 @@ The outlined analyses are adapted from the approaches presented in Allen, Joseph
 Moosmann, Schoenfelder, Specht Scheeringa, Nordby, & Hudgahl (2009). Their original functions can be found in
 this _[repository][bergen_toolbox]._ 
 
-The functions _baseline_correct.m_ and _correction_matrix.m_ were only marginally changed compared to the originals in the aforementioned repository. Changes were applied, so all functions could be used without eeglab. _adaptive_weighting_matrix.m, find_ecg_outliers.m, qrs_detect.m and signal_quality.m_ were newly written for this project. Lastly, _realignment_weighting.m, realign_euclid.m, marker_detection.m and linear_weighting.m_ are based on functions from the listed repository, but underwent major changes.
+The functions _baseline_correct.m_ , realign_euclid.m and _correction_matrix.m_ were only marginally changed compared to the originals in the aforementioned repository. Changes were applied, so all functions could be used without eeglab. _adaptive_weighting_matrix.m, find_ecg_outliers.m, qrs_detect.m and signal_quality.m_ were newly written for this project. Lastly, _realignment_weighting.m, marker_detection.m and linear_weighting.m_ are based on functions from the listed repository, but underwent major changes.
 
 ![](logo.png)
 
