@@ -42,6 +42,10 @@ under construction
 
 ## Usage examples
 
+### General workflow
+
+![](workflow.png)
+
 ### Preprocessing
 
 ```
