@@ -30,7 +30,7 @@ under construction
 
 ### Prerequisites
 
-Analyses are written in Python 2.6, Python 3.6, R, and Matlab. 
+Analyses are written in Python 2.7, Python 3.6, R, and Matlab. 
 
 ```
 under construction
