@@ -2,6 +2,8 @@
 
 > This repository is a collection of scripts and functions for analyzing simultaneously recorded EEG-fMRI data acquired while running an adaptation of a T-Maze task (i.e., [Baker & Holroyd, 2009][baker_holroyd]). Furthermore, we present developmental methods for correcting MR related artifacts in EEG data. 
 
+![](tmaze.png)
+
 ### General rational of the study
 
 For decades, T-maze paradigms have been used extensively across several animal species (e.g. mice, rodents, ferrets, cats) to investigate
