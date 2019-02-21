@@ -46,7 +46,7 @@ under construction
 
 ### General workflow
 
-![](workflow.png)
+![](workflow_eegfmri.png)
 
 ### Preprocessing
 
