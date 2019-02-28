@@ -1,6 +1,6 @@
 # EEG_fMRI_tmaze
 
-> This repository is a collection of scripts and functions for analyzing simultaneously recorded EEG-fMRI data acquired while running an adaptation of a T-Maze task (i.e., [Baker & Holroyd, 2009][baker_holroyd]). Furthermore, we present developmental methods for correcting MR related artifacts in EEG data. 
+> This repository is a collection of scripts and functions for analyzing simultaneously recorded EEG-fMRI data acquired while running an adaptation of a T-Maze task (i.e. _[Baker & Holroyd, 2009][baker_holroyd]_). Furthermore, we present developmental methods for correcting MR related artifacts in EEG data. 
 
 ![](tmaze.png)
 
@@ -19,6 +19,10 @@ the spectral, temporal, and spatial architecture of goal-directed navigation in 
 Together, we propose that imaging humans navigating a simple virtual T-maze can be utilized as a powerful translational model by which to 
 map the dynamic interaction between disparate neural systems underlying “real-life” goal-directed behavior in both health and disease.
 
+### Documentation
+
+The entire progress of this study starting Feb. 2019 is documented in the _[open lab notebook][opl]_ in this repository.
+Links to notebook entries featuring supplementary information for specific topics relating to this study (design, analyses, etc) are referenced below.
 
 ### Contents of this repository
 
@@ -44,11 +48,16 @@ under construction
 
 ## Usage examples
 
+For more detailed description of how and for what reason analysis pipelines were designed please see respective entries
+in the _[open lab notebook[opl]_.
+
 ### General workflow
 
 ![](workflow_eegfmri.PNG)
 
 ### Preprocessing
+
+The gross workflow illustrated above is covered in the numbered jupyter notebooke _[here][jp]_.
 
 ```
 under construction
@@ -66,3 +75,4 @@ under construction
 [baker_holroyd]: https://academic.oup.com/cercor/article/19/8/1708/413785
 [lap_page]: http://neurostimlab.com
 [jp]: https://github.com/MalteGueth/EEG_fMRI_tmaze/tree/master/preprocessing
+[opl]: https://github.com/MalteGueth/EEG_fMRI_tmaze/tree/master/open%20lab%20notebook
