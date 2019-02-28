@@ -49,7 +49,7 @@ under construction
 ## Usage examples
 
 For more detailed description of how and for what reason analysis pipelines were designed please see respective entries
-in the _[open lab notebook[opl]_.
+in the _[open lab notebook][opl]_.
 
 ### General workflow
 
