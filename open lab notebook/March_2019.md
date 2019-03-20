@@ -46,3 +46,11 @@
     * The intro went over well, but try to paraphrase less (more my own criticism)
 
 * The rest of the week I spent studying for the upcoming midterms exam.
+
+### Mar. 11th - Mar. 17th
+* I was preoccupied with studying for my midterms exam till Thursday 14th. The only notable developments regarding this study till then were a successful training session with my RA (for future data acquisitions with him) and some revisions of preprocessing jupyter notebooks (not updated yet in the repo folder)
+
+  * Later that week, I continued the revision and read a couple of papers:
+      * source estimation (for revising anatomically informed constraints): https://pdfs.semanticscholar.org/eaef/0dcaa875b151f0cbdd806abf39cc61d97b9a.pdf
+      * memory, EEG-fMRI, single trial ERP analysis: https://pdfs.semanticscholar.org/eaef/0dcaa875b151f0cbdd806abf39cc61d97b9a.pdf
+      * EEG-fMRI safety, temperature at 3T: https://journals.sagepub.com/doi/10.1177/0284185114536385
