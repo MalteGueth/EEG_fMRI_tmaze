@@ -54,3 +54,15 @@
       * source estimation (for revising anatomically informed constraints): https://pdfs.semanticscholar.org/eaef/0dcaa875b151f0cbdd806abf39cc61d97b9a.pdf
       * memory, EEG-fMRI, single trial ERP analysis: https://pdfs.semanticscholar.org/eaef/0dcaa875b151f0cbdd806abf39cc61d97b9a.pdf
       * EEG-fMRI safety, temperature at 3T: https://journals.sagepub.com/doi/10.1177/0284185114536385
+      
+### Mar. 18th - Mar. 24th
+* I discussed the problem of artifcats caused by vibrations induced by the scanner's helium pump with several people involved in the study or the administration of RUBIC (see https://pressrelease.brainproducts.com/vibration-artifacts-during-eeg-fmri/). For now, time is pressing and I need to continue with the data collection. Plus, previously collected data seemed interpretable. Hence, for now the curret situation has to suffice.
+
+* I discussed final preparations for starting data collection next week with Travis and my RA.
+
+* In the past week, I read the following papers related to the general topics of the study:
+
+ * Methods paper on EEG-TMS-MRI: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3569123/
+ * fMRI mental maze solving: https://www.karger.com/Article/PDF/95742?casa_token=z_lI7ONCi1gAAAAA:RxTuRIWUn2X4akvF1BF6NqZVsoSwczUbOXNECxCK7mbOybqKT0RGF0B9T9RansQ3YoC4LfPI
+ * Theta-Alpha, HC-PFC, memory, EEG-fMRI : http://www.jneurosci.org/content/jneuro/36/12/3579.full.pdf
+
