@@ -85,6 +85,8 @@
 
 * In order to prepare for this year's meeting of the Society for Psychophysiological Research, I wrote a draft for my poster abstract as well as submission to the Big Questions Sympoisum (subject 03: data integration) and sent it to Travis for review.
 
+* In preparation for writing the abstract, I had another look at the pilot time frequency analysis and performed some adjustments I had missed previously (e.g. both strict and more lenient filtering, checked baseline, etc)
+
 * In the past week, I read/re-read the following papers related to the general topics of the study:
 
   * Neural mechanisms of spatial navigation: http://www.jneurosci.org/content/jneuro/39/12/2301.full.pdf
