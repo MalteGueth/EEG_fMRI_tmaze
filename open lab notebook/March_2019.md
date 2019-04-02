@@ -74,9 +74,10 @@
 * A big part of the last week was spent on getting all preparations for the coming experiments right, giving my RA his final training sessions, recruiting subjects, scheduling time slots in different labs/facilities, and putting together the final runsheet.
 
 * On Thursday, we collected our first subject since the pilot runs. There were two major incididents relating to the E-prime experiment and Net Station:
- * At first, they failed to communicate properly, so that only MR triggers were recorded in the EEG file. After restarting the experiment and Net station, the issue was resolved.
+
+  * At first, they failed to communicate properly, so that only MR triggers were recorded in the EEG file. After restarting the experiment and Net station, the issue was resolved.
  
- * The second failure occured right aftewards. Net Station froze up and we had to interrupt the data acquisition again.
+  * The second failure occured right aftewards. Net Station froze up and we had to interrupt the data acquisition again.
 
 * Taken together, the two malfunctions caused us to only acquire an anatomical T1 and functional data from the T-maze task. Hence, we had to drop DTI and resting state. Furthermore, due to complications at the beginning of the experiment, we had to skip the acquisition of electrode positions using GPS. I asked the subject to come back for that later the next week, but those positions will not be as accurate, since the net fit will change.
 
