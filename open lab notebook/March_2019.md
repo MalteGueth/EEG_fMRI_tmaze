@@ -79,7 +79,9 @@
  
   * The second failure occured right aftewards. Net Station froze up and we had to interrupt the data acquisition again.
 
-* Taken together, the two malfunctions caused us to only acquire an anatomical T1 and functional data from the T-maze task. Hence, we had to drop DTI and resting state. Furthermore, due to complications at the beginning of the experiment, we had to skip the acquisition of electrode positions using GPS. I asked the subject to come back for that later the next week, but those positions will not be as accurate, since the net fit will change.
+* Taken together, the two malfunctions together with a long functional acquisition using the T-maze caused us to only acquire an anatomical T1 and functional data. Hence, we had to drop DTI and resting state. Furthermore, due to complications at the beginning of the experiment, we had to skip the acquisition of electrode positions using GPS. I asked the subject to come back for that later the next week, but those positions will not be as accurate, since the net fit will change.
+
+* Regarding measures to prevent these malfunctions, I emailed an error report to a contact person at EGI and Travis shortened the paradigm.
 
 * In order to prepare for this year's meeting of the Society for Psychophysiological Research, I wrote a draft for my poster abstract as well as submission to the Big Questions Sympoisum (subject 03: data integration) and sent it to Travis for review.
 
