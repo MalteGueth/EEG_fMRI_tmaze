@@ -66,3 +66,19 @@
  * fMRI mental maze solving: https://www.karger.com/Article/PDF/95742?casa_token=z_lI7ONCi1gAAAAA:RxTuRIWUn2X4akvF1BF6NqZVsoSwczUbOXNECxCK7mbOybqKT0RGF0B9T9RansQ3YoC4LfPI
  * Theta-Alpha, HC-PFC, memory, EEG-fMRI : http://www.jneurosci.org/content/jneuro/36/12/3579.full.pdf
 
+### Mar. 25th - Mar. 31st
+* A big part of the last week was spent on getting all preparations for the coming experiments right, giving my RA his final training sessions, recruiting subjects, scheduling time slots in different labs/facilities, and putting together the final runsheet.
+
+* On Thursday, we collected our first subject since the pilot runs. There were two major incididents relating to the E-prime experiment and Net Station:
+      * At first, they failed to communicate properly, so that only MR triggers were recorded in the EEG file. After restarting the experiment and Net station, the issue was resolved.
+      * The second failure occured right aftewards. Net Station froze up and we had to interrupt the data acquisition again.
+
+* Taken together, the two malfunctions caused us to only acquire an anatomical T1 and functional data from the T-maze task. Hence, we had to drop DTI and resting state. Furthermore, due to complications at the beginning of the experiment, we had to skip the acquisition of electrode positions using GPS. I asked the subject to come back for that later the next week, but those positions will not be as accurate, since the net fit will change.
+
+* In order to prepare for this year's meeting of the Society for Psychophysiological Research, I wrote a draft for my poster abstract as well as submission to the Big Questions Sympoisum (subject 03: data integration) and sent it to Travis for review.
+
+* In the past week, I read/re-read the following papers related to the general topics of the study:
+
+ * Neural mechanisms of spatial navigation: http://www.jneurosci.org/content/jneuro/39/12/2301.full.pdf
+ * Feature analysis for correlation studies of simultaneous EEG-fMRI
+data: a proof of concept for neurofeedback approaches: https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7319287
