@@ -1,6 +1,6 @@
 # EEG_fMRI_tmaze
 
-> This repository is a collection of scripts and functions for analyzing simultaneously recorded EEG-fMRI data acquired while running an adaptation of a T-Maze task (i.e. _[Baker & Holroyd, 2009][baker_holroyd]_). Furthermore, we present developmental methods for correcting MR related artifacts in EEG data. 
+> This repository is a collection of scripts and functions for analyzing simultaneously recorded EEG-fMRI data acquired while running an adaptation of a T-Maze task (i.e. _[Baker & Holroyd, 2009][baker_holroyd1]_; _[Baker, Umemoto, Krawitz, & Holroyd, 2015][baker_holroyd2]_). Furthermore, we present developmental methods for correcting MR related artifacts in EEG data. 
 
 ![](tmaze.png)
 
@@ -72,7 +72,8 @@ under construction
 5. Create a new Pull Request
 
 <!-- Markdown -->
-[baker_holroyd]: https://academic.oup.com/cercor/article/19/8/1708/413785
+[baker_holroyd1]: https://academic.oup.com/cercor/article/19/8/1708/413785
+[baker_holroyd2]: https://www.nature.com/articles/srep09063
 [lap_page]: http://neurostimlab.com
 [jp]: https://github.com/MalteGueth/EEG_fMRI_tmaze/tree/master/preprocessing
 [opl]: https://github.com/MalteGueth/EEG_fMRI_tmaze/tree/master/open%20lab%20notebook
