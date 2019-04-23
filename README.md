@@ -1,6 +1,6 @@
 # EEG_fMRI_tmaze
 
-> This repository is a collection of scripts and functions for analyzing simultaneously recorded EEG-fMRI data acquired while running an adaptation of a T-Maze task (i.e. _[Baker & Holroyd, 2009][baker_holroyd1]_; _[Baker, Umemoto, Krawitz, & Holroyd, 2015][baker_holroyd2]_). Furthermore, we present developmental methods for correcting MR related artifacts in EEG data. 
+> This repository is a collection of scripts and functions for analyzing simultaneously recorded EEG-fMRI data acquired while running an adaptation of a T-Maze task (i.e. _[Baker & Holroyd, 2008][baker_holroyd1]_; _[Baker, Umemoto, Krawitz, & Holroyd, 2015][baker_holroyd2]_). Furthermore, we present developmental methods for correcting MR related artifacts in EEG data. 
 
 ![](tmaze.png)
 
