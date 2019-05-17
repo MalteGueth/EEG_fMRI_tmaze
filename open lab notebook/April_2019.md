@@ -23,8 +23,16 @@
 
 * As last week, I skipped my weekly meeting with Travis to make up for the time necessary for scheduling subjects and running experiments.
 
-
 ### April 15th - April 21st
 * Experiments for this week were conducted on April 15th (x2), 16th, and 17th. All but one were carried out successfully. On April 16th I noticed some noise in the ECG at the end of the experiment during the resting state acquisition. As a result, I ran some tests with the ECG and found an even worse error. The next day I repeated the tests with some colleagues and could not find a heart beat. However, we found that the ECG1 input at the EEG connector was loose. Consequently, I wrote an error report to EGI.
 
 * Since we could not resolve the ECG issue, I cancelled all appointments for further experiments.
+
+### April 22nd - April 28th
+* Over the past week, I read the following papers related to this study's purposes:
+  * MRI with and without a high-density EEG cap—what makes the difference?: https://www.sciencedirect.com/science/article/pii/S1053811914009835?via%3Dihub
+  * A systematic review shows no performance benefit of machine learning over logistic regression for clinical prediction models: https://www.sciencedirect.com/science/article/pii/S0895435618310813
+  
+* I backed up all data collected until this point on my external hard drives and in the lab.
+
+* I started checking the overall quality of the data (e.g., movement related artifacts in EEG and MRI, marker positions, E-prime outputs, anatomical images, heart beat components in segmented ECG epochs, scan outlier detection, etc)
